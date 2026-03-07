@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+{% block title %}Analyze Crop - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-microscope"></i> Crop Analysis</h1>
+        <p class="subtitle">Analyze price trends, predict future prices, and get planting recommendations</p>
+    </div>
+</div>
+
+<!-- Analysis Form -->
+<div class="analysis-form-card">
+    <h2><i class="fas fa-sliders-h"></i> Configure Analysis</h2>
+    <form method="POST" action="{{ url_for('analyze') }}" id="analysisForm">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="crop_id"><i class="fas fa-seedling"></i> Select Crop</label>
+                <select name="crop_id" id="crop_id" required>
+                    {% for crop in crops %}
+                    <option value="{{ crop.id }}" {% if selected_crop is defined and selected_crop == crop.id %}selected{% elif request.args.get('crop') == crop.id|string %}selected{% endif %}>
+                        {{ crop.name }} ({{ crop.category }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="planting_month"><i class="fas fa-calendar-plus"></i> Planting Month</label>
+                <select name="planting_month" id="planting_month" required>
+                    {% for i in range(12) %}
+                    <option value="{{ i+1 }}" {% if selected_planting is defined and selected_planting == i+1 %}selected{% elif i+1 == 2 %}selected{% endif %}>
+                        {{ months[i] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="harvest_start"><i class="fas fa-calendar-check"></i> Harvest Start</label>
+                <select name="harvest_start" id="harvest_start" required>
+                    {% for i in range(12) %}
+                    <option value="{{ i+1 }}" {% if selected_harvest_start is defined and selected_harvest_start == i+1 %}selected{% elif i+1 == 4 %}selected{% endif %}>
+                        {{ months[i] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="harvest_end"><i class="fas fa-calendar-check"></i> Harvest End</label>
+                <select name="harvest_end" id="harvest_end" required>
+                    {% for i in range(12) %}
+                    <option value="{{ i+1 }}" {% if selected_harvest_end is defined and selected_harvest_end == i+1 %}selected{% elif i+1 == 5 %}selected{% endif %}>
+                        {{ months[i] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="farm_size_ha"><i class="fas fa-tractor"></i> Farm Size (Hectares)</label>
+                <input type="number" name="farm_size_ha" id="farm_size_ha" min="0.1" step="0.1" value="{{ selected_farm_size if selected_farm_size is defined else request.form.get('farm_size_ha', '1.0') }}" required class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="province"><i class="fas fa-map-marker-alt"></i> Region / Province</label>
+                <select name="province" id="province" required>
+                    {% for prov in provinces %}
+                    <option value="{{ prov }}" {% if selected_province is defined and selected_province == prov %}selected{% elif request.args.get('province') == prov %}selected{% endif %}>
+                        {{ prov }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <details class="advanced-options" {% if selected_use_custom_costs %}open{% endif %}>
+            <summary>
+                <i class="fas fa-sliders-h"></i>
+                Advanced Options
+            </summary>
+            <div class="advanced-options-body">
+                <label class="advanced-toggle" for="use_custom_costs">
+                    <input type="checkbox" name="use_custom_costs" id="use_custom_costs" value="1" {% if selected_use_custom_costs %}checked{% endif %}>
+                    <span>Use custom per-hectare costs for ROI and Net Profit</span>
+                </label>
+                <p class="form-help">
+                    Leave this off to use the database's average costs per hectare. Turn it on to enter your own ZMW estimates for seeds, fertilizer, chemicals, and labor.
+                </p>
+                <div class="form-grid advanced-cost-grid">
+                    <div class="form-group">
+                        <label for="seed_cost"><i class="fas fa-seedling"></i> Seeds (ZMW / ha)</label>
+                        <input type="number" name="seed_cost" id="seed_cost" min="0" step="0.01" value="{{ selected_custom_costs.seed }}" class="form-control custom-cost-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="fertilizer_cost"><i class="fas fa-flask"></i> Fertilizer (ZMW / ha)</label>
+                        <input type="number" name="fertilizer_cost" id="fertilizer_cost" min="0" step="0.01" value="{{ selected_custom_costs.fertilizer }}" class="form-control custom-cost-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="chemical_cost"><i class="fas fa-vial"></i> Chemicals (ZMW / ha)</label>
+                        <input type="number" name="chemical_cost" id="chemical_cost" min="0" step="0.01" value="{{ selected_custom_costs.chemicals }}" class="form-control custom-cost-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="labor_cost"><i class="fas fa-users"></i> Labor (ZMW / ha)</label>
+                        <input type="number" name="labor_cost" id="labor_cost" min="0" step="0.01" value="{{ selected_custom_costs.labor }}" class="form-control custom-cost-input">
+                    </div>
+                </div>
+            </div>
+        </details>
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-play"></i> Run Analysis
+        </button>
+    </form>
+</div>
+
+{% if report %}
+<!-- ═══════════ Results Section ═══════════ -->
+
+<!-- Decision Banner -->
+<div class="decision-banner {{ report.recommendation.color }}">
+    <div class="decision-icon">
+        {% if report.recommendation.color == 'green' %}
+            <i class="fas fa-check-circle"></i>
+        {% elif report.recommendation.color == 'yellow' %}
+            <i class="fas fa-exclamation-triangle"></i>
+        {% else %}
+            <i class="fas fa-times-circle"></i>
+        {% endif %}
+    </div>
+    <div class="decision-content">
+        <h2>{{ report.recommendation.verdict }}</h2>
+        <p>{{ report.recommendation.summary }}</p>
+        <div class="decision-score">
+            <div class="score-bar">
+                <div class="score-fill" style="width: {{ report.recommendation.score }}%"></div>
+            </div>
+            <span>Confidence Score: {{ report.recommendation.score }}/100</span>
+        </div>
+    </div>
+    <a href="{{ url_for('report', crop_id=selected_crop, planting_month=selected_planting, harvest_start=selected_harvest_start, harvest_end=selected_harvest_end, farm_size_ha=selected_farm_size, province=selected_province, use_custom_costs='1' if selected_use_custom_costs else None, seed_cost=selected_custom_costs.seed if selected_use_custom_costs else None, fertilizer_cost=selected_custom_costs.fertilizer if selected_use_custom_costs else None, chemical_cost=selected_custom_costs.chemicals if selected_use_custom_costs else None, labor_cost=selected_custom_costs.labor if selected_use_custom_costs else None) }}" class="btn btn-light">
+        <i class="fas fa-file-alt"></i> Full Report
+    </a>
+</div>
+
+<!-- Key Metrics -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-header">
+            <i class="fas fa-coins"></i>
+            <span>Expected Price</span>
+        </div>
+        <div class="metric-value">ZMW {{ "%.2f"|format(report.price_analysis.avg_expected_price) }}/kg</div>
+        <div class="metric-sub">Per 50kg bag: ZMW {{ "%.2f"|format(report.price_analysis.price_per_50kg_bag) }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <i class="fas fa-chart-area"></i>
+            <span>Market Demand</span>
+        </div>
+        <div class="metric-value">{{ report.demand_analysis.demand_level }}</div>
+        <div class="metric-sub">Index: {{ report.demand_analysis.avg_demand_index }} | Trend: {{ report.demand_analysis.demand_trend }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <i class="fas fa-shield-alt"></i>
+            <span>Risk Level</span>
+        </div>
+        <div class="metric-value risk-{{ report.risk_assessment.overall_risk_level|lower|replace(' ', '-') }}">
+            {{ report.risk_assessment.overall_risk_level }}
+        </div>
+        <div class="metric-sub">{{ report.risk_assessment.risk_count }} risk factor(s) identified</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Best Selling Month</span>
+        </div>
+        <div class="metric-value">{{ report.price_analysis.best_selling_month.month }}</div>
+        <div class="metric-sub">At ZMW {{ "%.2f"|format(report.price_analysis.best_selling_month.price) }}/kg</div>
+    </div>
+</div>
+
+<!-- Profitability Snapshot -->
+<div class="profitability-card" style="margin-top: 1.5rem; margin-bottom: 2rem; background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+    <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;"><i class="fas fa-chart-line" style="color: var(--accent-green); margin-right: 8px;"></i> Profitability Forecast</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.25rem;">Gross Revenue</p>
+            <h4 style="font-size: 1.25rem;">ZMW {{ "{:,.2f}".format(report.profitability.projected_revenue) }}</h4>
+        </div>
+        <div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.25rem;">Total Cost ({{ report.profitability.farm_size_ha }}ha)</p>
+            <h4 style="font-size: 1.25rem; color: var(--accent-red);">ZMW {{ "{:,.2f}".format(report.profitability.total_cost) }}</h4>
+        </div>
+        <div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.25rem;">Net Profit</p>
+            <h4 style="font-size: 1.5rem; color: {{ 'var(--accent-green)' if report.profitability.is_profitable else 'var(--accent-red)' }};">ZMW {{ "{:,.2f}".format(report.profitability.projected_profit) }}</h4>
+        </div>
+        <div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.25rem;">Est. ROI</p>
+            <span class="badge badge-{{ 'green' if report.profitability.roi_pct >= 20 else 'yellow' if report.profitability.roi_pct > 0 else 'red' }}" style="font-size: 1.1rem; padding: 0.4rem 0.8rem;">{{ report.profitability.roi_pct }}%</span>
+        </div>
+    </div>
+    <p class="cost-assumption-note">
+        {% if report.profitability.uses_custom_costs %}
+            Using your custom per-hectare estimates for seeds, fertilizer, chemicals, and labor{% if report.profitability.breakdown.other %}, plus the database average for other costs{% endif %}.
+        {% else %}
+            Using the database's average production costs per hectare.
+        {% endif %}
+    </p>
+</div>
+
+<!-- Charts Section -->
+<div class="charts-row">
+    <!-- Price History & Prediction Chart -->
+    <div class="chart-card">
+        <h3><i class="fas fa-chart-line"></i> Price History & Prediction</h3>
+        <canvas id="priceHistoryChart"></canvas>
+    </div>
+    <!-- Seasonal Pattern Chart -->
+    <div class="chart-card">
+        <h3><i class="fas fa-sun"></i> Seasonal Price Pattern</h3>
+        <canvas id="seasonalChart"></canvas>
+    </div>
+</div>
+
+<div class="charts-row">
+    <!-- Demand Trend Chart -->
+    <div class="chart-card">
+        <h3><i class="fas fa-users"></i> Market Demand Trend</h3>
+        <canvas id="demandChart"></canvas>
+    </div>
+    <!-- Prediction Methods Comparison -->
+    <div class="chart-card">
+        <h3><i class="fas fa-balance-scale"></i> Prediction Methods Comparison</h3>
+        <canvas id="methodsChart"></canvas>
+    </div>
+</div>
+
+<!-- Risk Assessment -->
+{% if report.risk_assessment.individual_risks %}
+<div class="risks-section">
+    <h2><i class="fas fa-exclamation-triangle"></i> Risk Assessment</h2>
+    <div class="risks-grid">
+        {% for risk in report.risk_assessment.individual_risks %}
+        <div class="risk-card severity-{{ risk.severity|lower }}">
+            <div class="risk-header">
+                <span class="risk-badge {{ risk.severity|lower }}">{{ risk.severity }}</span>
+                <h4>{{ risk.type }}</h4>
+            </div>
+            <p>{{ risk.description }}</p>
+            <div class="risk-mitigation">
+                <i class="fas fa-lightbulb"></i>
+                <span>{{ risk.mitigation }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Prediction Methods Used -->
+<div class="methods-section">
+    <h2><i class="fas fa-cogs"></i> Prediction Methods Used</h2>
+    <div class="methods-grid">
+        {% for method in report.prediction_methods %}
+        <div class="method-card">
+            <h4>{{ method.name }}</h4>
+            <p>{{ method.description }}</p>
+            <span class="method-weight">Weight: {{ method.weight }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Data Source -->
+<div class="attribution">
+    <p><i class="fas fa-info-circle"></i> Analysis based on data from <strong>{{ report.data_coverage.source }}</strong> ({{ report.data_coverage.years_analyzed }}, {{ report.data_coverage.total_price_records }} price records)</p>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggle = document.getElementById('use_custom_costs');
+    const inputs = document.querySelectorAll('.custom-cost-input');
+
+    if (!toggle || !inputs.length) {
+        return;
+    }
+
+    const syncCustomCostInputs = () => {
+        inputs.forEach((input) => {
+            input.disabled = !toggle.checked;
+            input.required = toggle.checked;
+        });
+    };
+
+    toggle.addEventListener('change', syncCustomCostInputs);
+    syncCustomCostInputs();
+});
+</script>
+{% if report and historical and prediction and demand %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Price History & Prediction Chart ──────────────────────────
+    const priceCtx = document.getElementById('priceHistoryChart').getContext('2d');
+    
+    // Historical data (last 3 years)
+    const rawData = {{ historical.raw_data | tojson }};
+    const last3Years = rawData.filter(r => r.year >= 2023);
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    
+    const histLabels = last3Years.map(r => monthNames[r.month-1] + ' ' + r.year);
+    const histPrices = last3Years.map(r => r.price_per_kg);
+    
+    // Prediction data
+    const predictions = {{ prediction.predictions | tojson }};
+    const predLabels = [];
+    const predPrices = [];
+    const ciUpper = [];
+    const ciLower = [];
+    
+    for (const [month, pred] of Object.entries(predictions)) {
+        predLabels.push(monthNames[parseInt(month)-1] + ' 2026');
+        predPrices.push(pred.combined_forecast.predicted_price);
+        ciUpper.push(pred.combined_forecast.confidence_interval.upper);
+        ciLower.push(pred.combined_forecast.confidence_interval.lower);
+    }
+    
+    // Combine for bridge
+    const allLabels = [...histLabels, ...predLabels];
+    const historicalLine = [...histPrices, ...Array(predLabels.length).fill(null)];
+    const predictionLine = [...Array(histLabels.length - 1).fill(null), histPrices[histPrices.length - 1], ...predPrices];
+    const upperLine = [...Array(histLabels.length).fill(null), ...ciUpper];
+    const lowerLine = [...Array(histLabels.length).fill(null), ...ciLower];
+
+    new Chart(priceCtx, {
+        type: 'line',
+        data: {
+            labels: allLabels,
+            datasets: [
+                {
+                    label: 'Historical Price',
+                    data: historicalLine,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 2,
+                },
+                {
+                    label: 'Predicted Price',
+                    data: predictionLine,
+                    borderColor: '#f59e0b',
+                    borderDash: [5, 5],
+                    backgroundColor: 'rgba(245,158,11,0.1)',
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 4,
+                },
+                {
+                    label: 'Upper Bound (95% CI)',
+                    data: upperLine,
+                    borderColor: 'rgba(245,158,11,0.3)',
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0,
+                },
+                {
+                    label: 'Lower Bound (95% CI)',
+                    data: lowerLine,
+                    borderColor: 'rgba(245,158,11,0.3)',
+                    borderDash: [2, 2],
+                    fill: '-1',
+                    backgroundColor: 'rgba(245,158,11,0.05)',
+                    pointRadius: 0,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: '#94a3b8' } },
+                tooltip: {
+                    callbacks: { label: ctx => `ZMW ${ctx.parsed.y ? ctx.parsed.y.toFixed(2) : 'N/A'}/kg` }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#64748b', maxTicksLimit: 12 }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                y: { ticks: { color: '#64748b', callback: v => 'K' + v.toFixed(1) }, grid: { color: 'rgba(148,163,184,0.1)' } }
+            }
+        }
+    });
+
+    // ── Seasonal Pattern Chart ───────────────────────────────────
+    const seasonCtx = document.getElementById('seasonalChart').getContext('2d');
+    const seasonalData = {{ historical.seasonal_indices | tojson }};
+    const seasonLabels = [];
+    const seasonValues = [];
+    const seasonColors = [];
+    
+    for (let m = 1; m <= 12; m++) {
+        if (seasonalData[m]) {
+            seasonLabels.push(seasonalData[m].month_name.substring(0, 3));
+            seasonValues.push(seasonalData[m].index);
+            const idx = seasonalData[m].index;
+            seasonColors.push(idx >= 110 ? '#ef4444' : idx >= 100 ? '#f59e0b' : '#10b981');
+        }
+    }
+
+    new Chart(seasonCtx, {
+        type: 'bar',
+        data: {
+            labels: seasonLabels,
+            datasets: [{
+                label: 'Seasonal Index (100 = average)',
+                data: seasonValues,
+                backgroundColor: seasonColors.map(c => c + '88'),
+                borderColor: seasonColors,
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: '#94a3b8' } },
+                annotation: { annotations: { line1: { type: 'line', yMin: 100, yMax: 100 } } }
+            },
+            scales: {
+                x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                y: { 
+                    ticks: { color: '#64748b' }, 
+                    grid: { color: 'rgba(148,163,184,0.1)' },
+                    suggestedMin: 60, suggestedMax: 150
+                }
+            }
+        }
+    });
+
+    // ── Demand Trend Chart ───────────────────────────────────────
+    const demandCtx = document.getElementById('demandChart').getContext('2d');
+    const yearlyDemand = {{ demand.yearly_avg_demand | tojson }};
+    const demandYears = Object.keys(yearlyDemand);
+    const demandValues2 = Object.values(yearlyDemand);
+
+    new Chart(demandCtx, {
+        type: 'line',
+        data: {
+            labels: demandYears,
+            datasets: [{
+                label: 'Average Demand Index',
+                data: demandValues2,
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139,92,246,0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#8b5cf6',
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: {
+                x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                y: { 
+                    ticks: { color: '#64748b' }, 
+                    grid: { color: 'rgba(148,163,184,0.1)' },
+                    suggestedMin: 40, suggestedMax: 100
+                }
+            }
+        }
+    });
+
+    // ── Methods Comparison Chart ─────────────────────────────────
+    const methodsCtx = document.getElementById('methodsChart').getContext('2d');
+    const firstMonth = Object.values(predictions)[0];
+    if (firstMonth && firstMonth.methods) {
+        const methods = firstMonth.methods;
+        const methodNames = [];
+        const methodPrices = [];
+        const methodColors = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'];
+        
+        Object.entries(methods).forEach(([key, val], i) => {
+            if (val.predicted_price) {
+                methodNames.push(val.method || key);
+                methodPrices.push(val.predicted_price);
+            }
+        });
+        
+        // Add combined
+        if (firstMonth.combined_forecast.predicted_price) {
+            methodNames.push('Combined Forecast');
+            methodPrices.push(firstMonth.combined_forecast.predicted_price);
+            methodColors.push('#ef4444');
+        }
+
+        new Chart(methodsCtx, {
+            type: 'bar',
+            data: {
+                labels: methodNames,
+                datasets: [{
+                    label: 'Predicted Price (ZMW/kg)',
+                    data: methodPrices,
+                    backgroundColor: methodColors.map(c => c + '88'),
+                    borderColor: methodColors,
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#64748b', callback: v => 'K' + v.toFixed(1) }, grid: { color: 'rgba(148,163,184,0.1)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } }
+                }
+            }
+        });
+    }
+
+    // Animate score bar
+    const scoreFill = document.querySelector('.score-fill');
+    if (scoreFill) {
+        setTimeout(() => { scoreFill.style.transition = 'width 1.5s ease'; }, 100);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

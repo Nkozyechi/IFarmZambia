@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Import Data - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-cloud-download-alt"></i> Import Live Data</h1>
+        <p class="subtitle">Fetch real agriculture statistics from Zambia Open Data for Africa API</p>
+    </div>
+</div>
+
+<div class="analysis-form-card">
+    <h2><i class="fas fa-database"></i> Data Import</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+        This page fetches live data directly from the 
+        <a href="https://zambia.opendataforafrica.org/etqmqgf/agriculture-statistics-2011-2025" target="_blank" style="color: var(--accent-teal);">
+            Zambia Open Data for Africa API
+        </a> and imports it into the local database. The API call
+        is made from your browser to bypass Cloudflare protection.
+    </p>
+
+    <div id="importStatus" class="decision-banner green" style="display:none;">
+        <div class="decision-icon">
+            <i class="fas fa-spinner fa-spin" id="statusIcon"></i>
+        </div>
+        <div class="decision-content">
+            <h2 id="statusTitle">Fetching data...</h2>
+            <p id="statusText">Connecting to Zambia Open Data for Africa API...</p>
+            <div class="decision-score" id="progressContainer" style="display:none;">
+                <div class="score-bar">
+                    <div class="score-fill" id="progressBar" style="width: 0%"></div>
+                </div>
+                <span id="progressText">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <button id="fetchBtn" class="btn btn-primary btn-lg" onclick="fetchAPIData()">
+        <i class="fas fa-cloud-download-alt"></i> Fetch & Import Data from API
+    </button>
+
+    <!-- Data Preview -->
+    <div id="dataPreview" style="display:none; margin-top: 24px;">
+        <h3 style="margin-bottom: 12px;"><i class="fas fa-table" style="color: var(--accent-teal);"></i> Fetched Data Preview</h3>
+        <div style="overflow-x: auto;">
+            <table class="report-table" id="previewTable">
+                <thead>
+                    <tr>
+                        <th>Indicator</th>
+                        <th>Region</th>
+                        <th>Year</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody id="previewBody"></tbody>
+            </table>
+        </div>
+        <p id="recordCount" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;"></p>
+    </div>
+
+    <!-- Import Log -->
+    <div id="importLog" style="display:none; margin-top: 24px;">
+        <h3 style="margin-bottom: 12px;"><i class="fas fa-list" style="color: var(--accent-teal);"></i> Import Log</h3>
+        <div id="logContent" style="background: var(--bg-primary); border-radius: var(--radius-sm); padding: 16px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: var(--text-secondary);"></div>
+    </div>
+</div>
+
+<!-- Indicator Reference -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-info-circle"></i> API Indicator Reference</h2>
+    <div class="report-content-grid">
+        <div class="report-card">
+            <h3>Crop Indicators</h3>
+            <table class="report-table">
+                <thead><tr><th>ID</th><th>Indicator</th></tr></thead>
+                <tbody id="indicatorList"></tbody>
+            </table>
+        </div>
+        <div class="report-card">
+            <h3>Regions</h3>
+            <table class="report-table">
+                <thead><tr><th>ID</th><th>Region</th></tr></thead>
+                <tbody id="regionList"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const API_BASE = 'https://zambia.opendataforafrica.org/api/2.0/data';
+const DATASET_ID = 'etqmqgf';
+const INDICATORS = '102,103,104,105,108,107,109,110,170,171,172,173,141,142,143,144,146,147,149,148,156,V156,157,158,161,160,162,163,113,112,114,115,136,137,139,138,132,133,134,131,126,127,128,129';
+const REGIONS = '1010,1003,1009,1008,1002,1006,12030316,1005,1004,1011';
+
+let fetchedData = null;
+
+function log(msg) {
+    const logDiv = document.getElementById('logContent');
+    const time = new Date().toLocaleTimeString();
+    logDiv.innerHTML += `<div>[${time}] ${msg}</div>`;
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function updateStatus(title, text, icon, type) {
+    const banner = document.getElementById('importStatus');
+    banner.style.display = 'flex';
+    banner.className = `decision-banner ${type || 'green'}`;
+    document.getElementById('statusTitle').textContent = title;
+    document.getElementById('statusText').textContent = text;
+    document.getElementById('statusIcon').className = icon;
+}
+
+function updateProgress(pct) {
+    const container = document.getElementById('progressContainer');
+    container.style.display = 'block';
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressText').textContent = pct + '%';
+}
+
+async function fetchAPIData() {
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
+
+    document.getElementById('importLog').style.display = 'block';
+    log('Starting API data fetch...');
+
+    const apiUrl = `${API_BASE}?datasetId=${DATASET_ID}&frequency=A&indicator=${INDICATORS}&region=${REGIONS}`;
+    
+    updateStatus('Fetching Data...', 'Connecting to Zambia Open Data for Africa API...', 'fas fa-spinner fa-spin', 'green');
+    log(`API URL: ${apiUrl}`);
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        fetchedData = data;
+
+        log(`API response received. Type: ${typeof data}`);
+        
+        // Handle both array and object formats
+        let records = [];
+        if (Array.isArray(data)) {
+            records = data;
+        } else if (data.data && Array.isArray(data.data)) {
+            records = data.data;
+        } else if (data.DataPoints && Array.isArray(data.DataPoints)) {
+            records = data.DataPoints;
+        } else {
+            // Log the structure for debugging
+            log(`Response keys: ${Object.keys(data).join(', ')}`);
+            log(`Full response (first 500 chars): ${JSON.stringify(data).substring(0, 500)}`);
+            
+            // Try to find the data array in any nested structure
+            for (const key of Object.keys(data)) {
+                if (Array.isArray(data[key])) {
+                    records = data[key];
+                    log(`Found data array in key: ${key} with ${records.length} items`);
+                    break;
+                }
+            }
+        }
+
+        updateStatus('Data Fetched!', `Received ${records.length} records from the API`, 'fas fa-check-circle', 'green');
+        updateProgress(50);
+        log(`Total records fetched: ${records.length}`);
+
+        // Preview data
+        showPreview(records);
+
+        // Send to Flask backend
+        log('Sending data to backend for import...');
+        updateStatus('Importing...', 'Saving data to local database...', 'fas fa-spinner fa-spin', 'green');
+
+        const importResponse = await fetch('/api/import-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                raw_data: data,
+                records: records 
+            })
+        });
+
+        const result = await importResponse.json();
+
+        if (result.success) {
+            updateStatus('Import Complete!', result.message, 'fas fa-check-circle', 'green');
+            updateProgress(100);
+            log(`SUCCESS: ${result.message}`);
+            
+            if (result.details) {
+                for (const detail of result.details) {
+                    log(detail);
+                }
+            }
+        } else {
+            updateStatus('Import Failed', result.error || 'Unknown error', 'fas fa-times-circle', 'red');
+            log(`ERROR: ${result.error}`);
+        }
+
+    } catch (err) {
+        updateStatus('Fetch Failed', err.message, 'fas fa-times-circle', 'red');
+        log(`ERROR: ${err.message}`);
+        log('Note: If you get a CORS error, the API may not allow cross-origin requests from localhost.');
+        log('The system will continue using the existing seeded data based on the same dataset.');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Fetch & Import Data from API';
+}
+
+function showPreview(records) {
+    if (!records || records.length === 0) {
+        log('No records to preview');
+        return;
+    }
+
+    const preview = document.getElementById('dataPreview');
+    preview.style.display = 'block';
+    const tbody = document.getElementById('previewBody');
+    tbody.innerHTML = '';
+
+    // Show first 20 records
+    const sample = records.slice(0, 20);
+
+    for (const rec of sample) {
+        const tr = document.createElement('tr');
+        
+        // Try to adapt to different data formats
+        const indicator = rec.IndicatorName || rec.indicator || rec.Indicator || rec[0] || '-';
+        const region = rec.RegionName || rec.region || rec.Region || rec[1] || '-';
+        const year = rec.TimePeriod || rec.year || rec.Year || rec[2] || '-';
+        const value = rec.Value || rec.value || rec[3] || '-';
+        const unit = rec.Unit || rec.unit || rec[4] || '-';
+
+        tr.innerHTML = `
+            <td>${indicator}</td>
+            <td>${region}</td>
+            <td>${year}</td>
+            <td><strong>${value}</strong></td>
+            <td>${unit}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    document.getElementById('recordCount').textContent = 
+        `Showing ${sample.length} of ${records.length} total records`;
+}
+
+// Populate reference tables on load
+document.addEventListener('DOMContentLoaded', function() {
+    const indicators = INDICATORS.split(',');
+    const indicatorBody = document.getElementById('indicatorList');
+    indicators.forEach(id => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${id}</td><td style="color:var(--text-muted)">Agriculture indicator ${id}</td>`;
+        indicatorBody.appendChild(tr);
+    });
+
+    const regionMap = {
+        '1010': 'Zambia (National)',
+        '1003': 'Central',
+        '1009': 'Copperbelt',
+        '1008': 'Eastern',
+        '1002': 'Luapula',
+        '1006': 'Lusaka',
+        '12030316': 'Muchinga',
+        '1005': 'Northern',
+        '1004': 'North-Western',
+        '1011': 'Southern'
+    };
+
+    const regionBody = document.getElementById('regionList');
+    for (const [id, name] of Object.entries(regionMap)) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${id}</td><td>${name}</td>`;
+        regionBody.appendChild(tr);
+    }
+});
+</script>
+{% endblock %}

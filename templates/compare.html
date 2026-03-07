@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Compare Crops - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-balance-scale"></i> Crop Comparison</h1>
+        <p class="subtitle">Compare profitability, risks, and forecasts side-by-side</p>
+    </div>
+</div>
+
+<!-- Configuration Form -->
+<div class="analysis-form-card" style="margin-bottom: 2rem;">
+    <h2><i class="fas fa-sliders-h"></i> Configure Comparison</h2>
+    <form method="POST" action="{{ url_for('compare') }}" id="compareForm">
+        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+            <div class="form-group">
+                <label for="crop1_id">Crop 1 (Required)</label>
+                <select name="crop1_id" id="crop1_id" required>
+                    <option value="" disabled {% if not selected_crop1 %}selected{% endif %}>Select First Crop...</option>
+                    {% for crop in crops %}
+                    <option value="{{ crop.id }}" {% if selected_crop1 == crop.id %}selected{% endif %}>{{ crop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="crop2_id">Crop 2 (Required)</label>
+                <select name="crop2_id" id="crop2_id" required>
+                    <option value="" disabled {% if not selected_crop2 %}selected{% endif %}>Select Second Crop...</option>
+                    {% for crop in crops %}
+                    <option value="{{ crop.id }}" {% if selected_crop2 == crop.id %}selected{% endif %}>{{ crop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="crop3_id">Crop 3 (Optional)</label>
+                <select name="crop3_id" id="crop3_id">
+                    <option value="">-- None --</option>
+                    {% for crop in crops %}
+                    <option value="{{ crop.id }}" {% if selected_crop3 == crop.id %}selected{% endif %}>{{ crop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="planting_month">Planting Month</label>
+                <select name="planting_month" id="planting_month" required>
+                    {% for i in range(12) %}
+                    <option value="{{ i+1 }}" {% if selected_planting == i+1 %}selected{% elif not selected_planting and i+1 == 2 %}selected{% endif %}>{{ months[i] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="harvest_start">Harvest Start</label>
+                <select name="harvest_start" id="harvest_start" required>
+                    {% for i in range(12) %}
+                    <option value="{{ i+1 }}" {% if selected_harvest_start == i+1 %}selected{% elif not selected_harvest_start and i+1 == 4 %}selected{% endif %}>{{ months[i] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="harvest_end">Harvest End</label>
+                <select name="harvest_end" id="harvest_end" required>
+                    {% for i in range(12) %}
+                    <option value="{{ i+1 }}" {% if selected_harvest_end == i+1 %}selected{% elif not selected_harvest_end and i+1 == 5 %}selected{% endif %}>{{ months[i] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="farm_size_ha">Farm Size (ha)</label>
+                <input type="number" name="farm_size_ha" id="farm_size_ha" min="0.1" step="0.1" value="{{ selected_farm_size if selected_farm_size else '1.0' }}" required class="form-control" style="width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main);">
+            </div>
+            <div class="form-group">
+                <label for="province">Region / Province</label>
+                <select name="province" id="province" required>
+                    {% for prov in provinces %}
+                    <option value="{{ prov }}" {% if selected_province == prov %}selected{% elif not selected_province and prov == 'National' %}selected{% endif %}>{{ prov }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+            <i class="fas fa-balance-scale"></i> Compare Crops
+        </button>
+    </form>
+</div>
+
+{% if reports and reports|length >= 2 %}
+<div class="report-section" style="margin-bottom: 2rem;">
+    <h2 class="section-title"><i class="fas fa-table"></i> Head-to-Head Comparison</h2>
+    <div class="table-responsive" style="overflow-x: auto; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <table class="report-table" style="margin: 0; min-width: 800px;">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Metric</th>
+                    {% for rep in reports %}
+                    <th style="width: {{ 75 / reports|length }}%; font-size: 1.2rem; text-align: center;">{{ rep.crop.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Recommendation -->
+                <tr>
+                    <td><strong>Final Recommendation</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center;">
+                        <span class="badge badge-{{ rep.recommendation.color }}" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                            {{ rep.recommendation.verdict }}
+                        </span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- Confidence Score -->
+                <tr>
+                    <td><strong>Confidence Score</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center; font-weight: bold; font-size: 1.1rem; color: {{ 'var(--accent-green)' if rep.recommendation.score >= 70 else 'var(--accent-yellow)' if rep.recommendation.score >= 45 else 'var(--accent-red)' }};">
+                        {{ rep.recommendation.score }}/100
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- Profitability -->
+                <tr>
+                    <td><strong>Net Projected Profit</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center; font-size: 1.1rem; color: {{ 'var(--accent-green)' if rep.profitability.is_profitable else 'var(--accent-red)' }};">
+                        <strong>ZMW {{ "{:,.2f}".format(rep.profitability.projected_profit) }}</strong>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- ROI -->
+                <tr>
+                    <td><strong>Return on Investment (ROI)</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center;">
+                        <span class="badge badge-{{ 'green' if rep.profitability.roi_pct >= 20 else 'yellow' if rep.profitability.roi_pct > 0 else 'red' }}">
+                            {{ rep.profitability.roi_pct }}%
+                        </span>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- Price -->
+                <tr>
+                    <td><strong>Average Expected Price</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center;">ZMW {{ "%.2f"|format(rep.price_analysis.avg_expected_price) }}/kg</td>
+                    {% endfor %}
+                </tr>
+                <!-- Market Demand -->
+                <tr>
+                    <td><strong>Market Demand</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center;">
+                        {{ rep.demand_analysis.demand_level }}<br>
+                        <small style="color: var(--text-muted);">(Index: {{ rep.demand_analysis.avg_demand_index }})</small>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- Risk Level -->
+                <tr>
+                    <td><strong>Risk Level</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center;">
+                        <strong class="risk-{{ rep.risk_assessment.overall_risk_level|lower|replace(' ', '-') }}">
+                            {{ rep.risk_assessment.overall_risk_level }}
+                        </strong>
+                        <br><small style="color: var(--text-muted);">{{ rep.risk_assessment.risk_count }} risks</small>
+                    </td>
+                    {% endfor %}
+                </tr>
+                <!-- Actions -->
+                <tr class="total-row">
+                    <td><strong>Detailed Report</strong></td>
+                    {% for rep in reports %}
+                    <td style="text-align: center;">
+                        <a href="{{ url_for('report', crop_id=rep.crop.id, planting_month=rep.scenario.planting_month_num|default(selected_planting), harvest_start=selected_harvest_start, harvest_end=selected_harvest_end, farm_size_ha=selected_farm_size, province=selected_province) }}" class="btn btn-outline btn-sm">
+                            View Report
+                        </a>
+                    </td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-spider"></i> Multi-Dimensional Profile Comparison</h2>
+    <div class="chart-card" style="max-width: 600px; margin: 0 auto;">
+        <canvas id="radarChart"></canvas>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if reports and reports|length >= 2 %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    
+    // Prepare data
+    const labels = ['Confidence Score', 'Profitability', 'ROI', 'Demand Index', 'Safety (Inv. Risk)'];
+    
+    // Chart colors for 3 crops: Green, Blue, Purple
+    const colors = [
+        { border: '#10b981', bg: 'rgba(16, 185, 129, 0.2)' },
+        { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)' },
+        { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.2)' }
+    ];
+    
+    // Find max profit to normalize profitability to 0-100 scale
+    const rawProfits = [
+        {% for rep in reports %} {{ rep.profitability.projected_profit }}, {% endfor %}
+    ];
+    const maxProfit = Math.max(...rawProfits, 1); // avoid div 0
+    
+    const datasets = [
+        {% for i in range(reports|length) %}
+        {% set rep = reports[i] %}
+        {
+            label: '{{ rep.crop.name }}',
+            data: [
+                {{ rep.recommendation.score }}, 
+                Math.max(0, ({{ rep.profitability.projected_profit }} / maxProfit) * 100),
+                Math.min(100, Math.max(0, {{ rep.profitability.roi_pct }})), // Cap ROI at 100 on chart
+                {{ rep.demand_analysis.avg_demand_index }},
+                // Inverse Risk: Low=100, Low-Medium=80, Medium=60, High=30
+                {% if rep.risk_assessment.overall_risk_level == 'Low' %} 100
+                {% elif rep.risk_assessment.overall_risk_level == 'Low-Medium' %} 80
+                {% elif rep.risk_assessment.overall_risk_level == 'Medium' %} 60
+                {% else %} 30 {% endif %}
+            ],
+            borderColor: colors[{{ i }}].border,
+            backgroundColor: colors[{{ i }}].bg,
+            pointBackgroundColor: colors[{{ i }}].border,
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: colors[{{ i }}].border,
+            borderWidth: 2,
+        },
+        {% endfor %}
+    ];
+    
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(148, 163, 184, 0.2)' },
+                    grid: { color: 'rgba(148, 163, 184, 0.2)' },
+                    pointLabels: { color: '#94a3b8', font: { size: 13, family: "'Inter', sans-serif" } },
+                    ticks: { color: '#64748b', backdropColor: 'transparent', min: 0, max: 100, stepSize: 20 }
+                }
+            },
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20, font: { size: 14 } } },
+                tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#fff', bodyColor: '#cbd5e1' }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

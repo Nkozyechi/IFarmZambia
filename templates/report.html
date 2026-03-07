@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}Decision Report - {{ report.crop.name }} - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-file-alt"></i> Decision Report</h1>
+        <p class="subtitle">Comprehensive planting analysis for {{ report.crop.name }}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('report_pdf', crop_id=crop_id, planting_month=planting_month, harvest_start=harvest_start, harvest_end=harvest_end, farm_size_ha=farm_size_ha, province=province, use_custom_costs='1' if selected_use_custom_costs else None, seed_cost=selected_custom_costs.seed if selected_use_custom_costs else None, fertilizer_cost=selected_custom_costs.fertilizer if selected_use_custom_costs else None, chemical_cost=selected_custom_costs.chemicals if selected_use_custom_costs else None, labor_cost=selected_custom_costs.labor if selected_use_custom_costs else None) }}" class="btn btn-primary" target="_blank" style="margin-right: 8px; background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);">
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </a>
+        <a href="{{ url_for('report_csv', crop_id=crop_id, planting_month=planting_month, harvest_start=harvest_start, harvest_end=harvest_end, farm_size_ha=farm_size_ha, province=province) }}" class="btn btn-primary" target="_blank" style="margin-right: 8px; background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);">
+            <i class="fas fa-file-csv"></i> Download CSV
+        </a>
+        <button onclick="window.print()" class="btn btn-outline">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+        <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> Back to Analysis
+        </a>
+    </div>
+</div>
+
+<!-- Report Header -->
+<div class="report-header-card">
+    <div class="report-info-grid">
+        <div class="report-info-item">
+            <span class="label">Crop</span>
+            <span class="value">{{ report.crop.name }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Category</span>
+            <span class="value">{{ report.crop.category }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Planting Month</span>
+            <span class="value">{{ report.scenario.planting_month }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Harvest Period</span>
+            <span class="value">{{ report.scenario.harvest_months | join(', ') }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Growth Period</span>
+            <span class="value">{{ report.scenario.growth_period }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Target Year</span>
+            <span class="value">{{ report.scenario.target_year }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Data Coverage</span>
+            <span class="value">{{ report.data_coverage.years_analyzed }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Data Records</span>
+            <span class="value">{{ report.data_coverage.total_price_records }}</span>
+        </div>
+        <div class="report-info-item">
+            <span class="label">Cost Basis</span>
+            <span class="value">{{ report.profitability.cost_source_label }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Final Recommendation -->
+<div class="decision-banner {{ report.recommendation.color }} report-mode">
+    <div class="decision-icon large">
+        {% if report.recommendation.color == 'green' %}
+            <i class="fas fa-check-circle"></i>
+        {% elif report.recommendation.color == 'yellow' %}
+            <i class="fas fa-exclamation-triangle"></i>
+        {% else %}
+            <i class="fas fa-times-circle"></i>
+        {% endif %}
+    </div>
+    <div class="decision-content">
+        <h2>Final Recommendation: {{ report.recommendation.verdict }}</h2>
+        <p>{{ report.recommendation.summary }}</p>
+        <div class="decision-score">
+            <div class="score-bar">
+                <div class="score-fill" style="width: {{ report.recommendation.score }}%"></div>
+            </div>
+            <span>Confidence Score: {{ report.recommendation.score }}/100</span>
+        </div>
+        <div class="key-factors">
+            <h4>Key Factors:</h4>
+            <ul>
+                {% for factor in report.recommendation.key_factors %}
+                <li><i class="fas fa-angle-right"></i> {{ factor }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Section 1: Price Analysis -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-coins"></i> 1. Price Analysis</h2>
+    
+    <div class="report-content-grid">
+        <div class="report-card">
+            <h3>Historical Summary</h3>
+            <table class="report-table">
+                <tr>
+                    <td>Overall Average Price</td>
+                    <td><strong>ZMW {{ "%.2f"|format(report.price_analysis.historical_summary.overall_avg_price) }}/kg</strong></td>
+                </tr>
+                <tr>
+                    <td>Price Range (All Time)</td>
+                    <td>ZMW {{ "%.2f"|format(report.price_analysis.historical_summary.overall_min_price) }} - {{ "%.2f"|format(report.price_analysis.historical_summary.overall_max_price) }}/kg</td>
+                </tr>
+                <tr>
+                    <td>Price Trend</td>
+                    <td><span class="badge badge-{{ 'green' if report.price_analysis.historical_summary.trend == 'increasing' else 'red' if report.price_analysis.historical_summary.trend == 'decreasing' else 'yellow' }}">{{ report.price_analysis.historical_summary.trend|capitalize }}</span></td>
+                </tr>
+                <tr>
+                    <td>Avg. Annual Growth</td>
+                    <td>{{ report.price_analysis.historical_summary.avg_annual_growth_pct }}%</td>
+                </tr>
+                <tr>
+                    <td>Price Volatility</td>
+                    <td><span class="badge badge-{{ 'red' if report.price_analysis.historical_summary.volatility_level in ['High', 'Very High'] else 'yellow' if report.price_analysis.historical_summary.volatility_level == 'Moderate' else 'green' }}">{{ report.price_analysis.historical_summary.volatility_level }} (CV={{ report.price_analysis.historical_summary.price_volatility_cv }}%)</span></td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="report-card">
+            <h3>Predicted Harvest Prices</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Predicted Price</th>
+                        <th>Price Range (95% CI)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for month, hp in report.price_analysis.harvest_predictions.items() %}
+                    <tr>
+                        <td>{{ hp.month_name }}</td>
+                        <td><strong>ZMW {{ "%.2f"|format(hp.predicted_price) }}/kg</strong></td>
+                        <td>{{ hp.price_range }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td><strong>Average</strong></td>
+                        <td><strong>ZMW {{ "%.2f"|format(report.price_analysis.avg_expected_price) }}/kg</strong></td>
+                        <td>Per 50kg bag: <strong>ZMW {{ "%.2f"|format(report.price_analysis.price_per_50kg_bag) }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Section 2: Profitability & ROI -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-chart-line"></i> 2. Profitability & ROI Forecast</h2>
+    
+    <div class="report-content-grid">
+        <div class="report-card">
+            <h3>Expected Revenue</h3>
+            <table class="report-table">
+                <tr>
+                    <td>Assumed Farm Size</td>
+                    <td><strong>{{ report.profitability.farm_size_ha }} Hectares</strong></td>
+                </tr>
+                <tr>
+                    <td>Expected Yield</td>
+                    <td>{{ "%.2f"|format(report.profitability.yield_mt_per_ha) }} MT/ha</td>
+                </tr>
+                <tr>
+                    <td>Total Forecast Sale Volume</td>
+                    <td>{{ "%.0f"|format(report.profitability.total_yield_kg) }} kg</td>
+                </tr>
+                <tr>
+                    <td>Average Expected Price</td>
+                    <td>ZMW {{ "%.2f"|format(report.price_analysis.avg_expected_price) }}/kg</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>Gross Projected Revenue</strong></td>
+                    <td style="color: var(--accent-green);"><strong>ZMW {{ "{:,.2f}".format(report.profitability.projected_revenue) }}</strong></td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="report-card">
+            <h3>Cost & Profit Breakdown</h3>
+            <table class="report-table">
+                <tr>
+                    <td>Cost Assumption Source</td>
+                    <td>{{ report.profitability.cost_source_label }}</td>
+                </tr>
+                <tr>
+                    <td>Seed Cost</td>
+                    <td>ZMW {{ "{:,.2f}".format(report.profitability.breakdown.seed) }} /ha</td>
+                </tr>
+                <tr>
+                    <td>Fertilizer Cost</td>
+                    <td>ZMW {{ "{:,.2f}".format(report.profitability.breakdown.fertilizer) }} /ha</td>
+                </tr>
+                <tr>
+                    <td>Chemicals Cost</td>
+                    <td>ZMW {{ "{:,.2f}".format(report.profitability.breakdown.chemicals) }} /ha</td>
+                </tr>
+                <tr>
+                    <td>Labor Cost</td>
+                    <td>ZMW {{ "{:,.2f}".format(report.profitability.breakdown.labor) }} /ha</td>
+                </tr>
+                <tr>
+                    <td>Other Costs</td>
+                    <td>ZMW {{ "{:,.2f}".format(report.profitability.breakdown.other) }} /ha</td>
+                </tr>
+                <tr>
+                    <td>Total Production Cost</td>
+                    <td>ZMW {{ "{:,.2f}".format(report.profitability.total_cost) }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>Net Projected Profit</strong></td>
+                    <td style="color: {{ 'var(--accent-green)' if report.profitability.is_profitable else 'var(--accent-red)' }};">
+                        <strong>ZMW {{ "{:,.2f}".format(report.profitability.projected_profit) }}</strong>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Return on Investment (ROI)</strong></td>
+                    <td><span class="badge badge-{{ 'green' if report.profitability.roi_pct >= 20 else 'yellow' if report.profitability.roi_pct > 0 else 'red' }}">{{ report.profitability.roi_pct }}%</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Section 3: Demand Analysis -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-users"></i> 3. Market Demand Analysis</h2>
+    
+    <div class="report-content-grid">
+        <div class="report-card">
+            <h3>Demand During Harvest</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Demand Index</th>
+                        <th>Demand Level</th>
+                        <th>Est. Volume (MT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for month, hd in report.demand_analysis.harvest_demand.items() %}
+                    <tr>
+                        <td>{{ hd.month_name }}</td>
+                        <td>{{ hd.demand_index }}</td>
+                        <td><span class="badge badge-{{ 'green' if hd.demand_level in ['High', 'Moderate-High'] else 'yellow' if hd.demand_level == 'Moderate' else 'red' }}">{{ hd.demand_level }}</span></td>
+                        <td>{{ "%.0f"|format(hd.volume_mt) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="report-card">
+            <h3>Supply-Demand Balance</h3>
+            <table class="report-table">
+                <tr>
+                    <td>Overall Demand Level</td>
+                    <td><strong>{{ report.demand_analysis.demand_level }}</strong> (Index: {{ report.demand_analysis.avg_demand_index }})</td>
+                </tr>
+                <tr>
+                    <td>Demand Trend</td>
+                    <td>{{ report.demand_analysis.demand_trend }}</td>
+                </tr>
+                <tr>
+                    <td>Projected National Production</td>
+                    <td>{{ "%.0f"|format(report.demand_analysis.supply_demand.projected_production_mt) }} MT</td>
+                </tr>
+                <tr>
+                    <td>Production Growth</td>
+                    <td>{{ "%.0f"|format(report.demand_analysis.supply_demand.production_growth_mt_per_year) }} MT/year</td>
+                </tr>
+                <tr>
+                    <td>Balance Assessment</td>
+                    <td><strong>{{ report.demand_analysis.supply_demand.balance_assessment }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Supply Risk</td>
+                    <td><span class="badge badge-{{ 'red' if report.demand_analysis.supply_demand.supply_risk == 'High' else 'yellow' if report.demand_analysis.supply_demand.supply_risk == 'Medium' else 'green' }}">{{ report.demand_analysis.supply_demand.supply_risk }}</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Section 4: Risk Assessment -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-exclamation-triangle"></i> 4. Risk Assessment</h2>
+    
+    <div class="risk-summary-bar">
+        <span>Overall Risk Level: <strong class="risk-{{ report.risk_assessment.overall_risk_level|lower|replace(' ', '-') }}">{{ report.risk_assessment.overall_risk_level }}</strong></span>
+        <span>{{ report.risk_assessment.high_risk_count }} High | {{ report.risk_assessment.medium_risk_count }} Medium</span>
+    </div>
+    
+    {% if report.risk_assessment.individual_risks %}
+    <div class="risks-grid">
+        {% for risk in report.risk_assessment.individual_risks %}
+        <div class="risk-card severity-{{ risk.severity|lower }}">
+            <div class="risk-header">
+                <span class="risk-badge {{ risk.severity|lower }}">{{ risk.severity }}</span>
+                <h4>{{ risk.type }}</h4>
+            </div>
+            <p>{{ risk.description }}</p>
+            <div class="risk-mitigation">
+                <i class="fas fa-lightbulb"></i>
+                <span><strong>Mitigation:</strong> {{ risk.mitigation }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-risks">
+        <i class="fas fa-check-circle"></i>
+        <p>No significant risks identified for this planting scenario.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Section 5: Seasonal Timing -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-clock"></i> 5. Seasonal Timing Analysis</h2>
+    
+    <div class="report-card">
+        <table class="report-table">
+            <tr>
+                <td>Harvest Seasonal Index</td>
+                <td>{{ report.seasonal_timing.harvest_seasonal_index }}</td>
+                <td>{% if report.seasonal_timing.is_optimal_timing %}<span class="badge badge-green">Optimal Timing</span>{% else %}<span class="badge badge-yellow">Sub-optimal Timing</span>{% endif %}</td>
+            </tr>
+            <tr>
+                <td>Best Month to Sell (Historically)</td>
+                <td>{{ report.seasonal_timing.best_selling_month.name }}</td>
+                <td>Seasonal Index: {{ report.seasonal_timing.best_selling_month.index }}</td>
+            </tr>
+            <tr>
+                <td>Worst Month to Sell</td>
+                <td>{{ report.seasonal_timing.worst_selling_month.name }}</td>
+                <td>Seasonal Index: {{ report.seasonal_timing.worst_selling_month.index }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- Section 6: Methodology -->
+<div class="report-section">
+    <h2 class="section-title"><i class="fas fa-cogs"></i> 6. Prediction Methodology</h2>
+    
+    <div class="methods-grid">
+        {% for method in report.prediction_methods %}
+        <div class="method-card">
+            <h4>{{ method.name }}</h4>
+            <p>{{ method.description }}</p>
+            <span class="method-weight">Weight in Combined Forecast: {{ method.weight }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="report-card methodology-note">
+        <h4><i class="fas fa-info-circle"></i> How It Works</h4>
+        <p>The system analyzes <strong>{{ report.data_coverage.total_price_records }}</strong> historical price records spanning
+        <strong>{{ report.data_coverage.years_analyzed }}</strong> from the <strong>{{ report.data_coverage.source }}</strong>. 
+        Four prediction methods are applied independently and then combined using a weighted ensemble approach. 
+        The confidence interval represents the 95% probability range based on historical variance for the target months.</p>
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="report-footer">
+    <p><strong>IFarm Zambia</strong> - Farm Market Analysis & Price Prediction System</p>
+    <p>Report generated for {{ report.crop.name }} | {{ report.scenario.planting_month }} planting, {{ report.scenario.harvest_months | join(' - ') }} harvest</p>
+    <p>Data: {{ report.data_coverage.source }} | <a href="https://zambia.opendataforafrica.org/etqmqgf/agriculture-statistics-2011-2025" target="_blank">View Original Dataset</a></p>
+</div>
+
+{% endblock %}

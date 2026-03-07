@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-chart-line"></i> Market Dashboard</h1>
+        <p class="subtitle">Real-time overview of Zambian crop market prices and trends</p>
+    </div>
+    <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+        <i class="fas fa-microscope"></i> Analyze a Crop
+    </a>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+            <i class="fas fa-leaf"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ crops|length }}</h3>
+            <p>Crops Tracked</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+            <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="stat-info">
+            <h3>3</h3>
+            <p>Years of Data</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+        <div class="stat-info">
+            <h3>2023-2025</h3>
+            <p>Data Coverage</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+            <i class="fas fa-globe-africa"></i>
+        </div>
+        <div class="stat-info">
+            <h3>Zambia</h3>
+            <p>Market Region</p>
+        </div>
+    </div>
+</div>
+
+<!-- Crop Cards -->
+<h2 class="section-title"><i class="fas fa-seedling"></i> Crop Market Overview</h2>
+<div class="crop-grid">
+    {% for crop in crops %}
+    <div class="crop-card" data-crop-id="{{ crop.id }}">
+        <div class="crop-card-header">
+            <div class="crop-icon {{ crop.category|lower }}">
+                {% if crop.category == 'Vegetables' %}
+                    <i class="fas fa-carrot"></i>
+                {% elif crop.category == 'Cereals' %}
+                    <i class="fas fa-wheat-awn"></i>
+                {% elif crop.category == 'Legumes' %}
+                    <i class="fas fa-circle-dot"></i>
+                {% elif crop.category == 'Tubers' %}
+                    <i class="fas fa-ellipsis"></i>
+                {% else %}
+                    <i class="fas fa-leaf"></i>
+                {% endif %}
+            </div>
+            <span class="crop-category">{{ crop.category }}</span>
+        </div>
+        <h3>{{ crop.name }}</h3>
+        <p class="crop-description">{{ crop.description }}</p>
+        
+        <div class="price-info">
+            <div class="current-price">
+                <span class="price-label">Latest Price</span>
+                <span class="price-value">ZMW {{ "%.2f"|format(crop.latest_price) }}/kg</span>
+            </div>
+            <div class="price-trend {{ crop.trend }}">
+                {% if crop.trend == 'up' %}
+                    <i class="fas fa-arrow-up"></i>
+                {% elif crop.trend == 'down' %}
+                    <i class="fas fa-arrow-down"></i>
+                {% else %}
+                    <i class="fas fa-minus"></i>
+                {% endif %}
+                <span>{{ crop.price_change }}%</span>
+            </div>
+        </div>
+        
+        <div class="crop-meta">
+            <span><i class="fas fa-clock"></i> {{ crop.growth_period_months }} months growth</span>
+            <span><i class="fas fa-calendar"></i> {{ crop.latest_month }} {{ crop.latest_year }}</span>
+        </div>
+        
+        <div class="sparkline-container" style="height: 48px; margin-top: 15px; margin-bottom: 15px;">
+            <canvas class="sparkline-chart" data-points="{{ crop.sparkline | tojson }}" data-color="{% if crop.trend == 'up' %}#10b981{% elif crop.trend == 'down' %}#ef4444{% else %}#3b82f6{% endif %}"></canvas>
+        </div>
+        
+        <div class="crop-actions">
+            <a href="{{ url_for('analyze') }}?crop={{ crop.id }}" class="btn btn-sm btn-outline">
+                <i class="fas fa-chart-area"></i> Analyze
+            </a>
+            <button class="btn btn-sm btn-ghost" onclick="showPriceChart({{ crop.id }}, '{{ crop.name }}')">
+                <i class="fas fa-chart-line"></i> Chart
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Price Chart Modal -->
+<div class="modal-overlay" id="chartModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="chartTitle">Price History</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Data Source Attribution -->
+<div class="attribution">
+    <p><i class="fas fa-info-circle"></i> Data sourced from <strong>Zambia Open Data for Africa - Agriculture Statistics 2011-2025</strong></p>
+    <a href="https://zambia.opendataforafrica.org/etqmqgf/agriculture-statistics-2011-2025" target="_blank" rel="noopener">
+        View Original Dataset <i class="fas fa-external-link-alt"></i>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let priceChartInstance = null;
+
+    function showPriceChart(cropId, cropName) {
+        document.getElementById('chartTitle').textContent = cropName + ' - Price History (ZMW/kg)';
+        document.getElementById('chartModal').classList.add('active');
+        
+        fetch(`/api/price-history/${cropId}`)
+            .then(r => r.json())
+            .then(data => {
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                
+                if (priceChartInstance) priceChartInstance.destroy();
+                
+                const labels = data.prices.map(p => {
+                    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    return monthNames[p.month - 1] + ' ' + p.year;
+                });
+                const prices = data.prices.map(p => p.price_per_kg);
+                
+                // Show only last 3 years for readability
+                const cutoff = Math.max(0, labels.length - 36);
+                
+                priceChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels.slice(cutoff),
+                        datasets: [{
+                            label: 'Price (ZMW/kg)',
+                            data: prices.slice(cutoff),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: '#94a3b8' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => `ZMW ${ctx.parsed.y.toFixed(2)}/kg`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { 
+                                ticks: { color: '#64748b', maxTicksLimit: 12 },
+                                grid: { color: 'rgba(148,163,184,0.1)' }
+                            },
+                            y: { 
+                                ticks: { 
+                                    color: '#64748b',
+                                    callback: v => 'ZMW ' + v.toFixed(1)
+                                },
+                                grid: { color: 'rgba(148,163,184,0.1)' }
+                            }
+                        }
+                    }
+                });
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('chartModal').classList.remove('active');
+    }
+
+    document.getElementById('chartModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.sparkline-chart').forEach(canvas => {
+            const pointsData = canvas.getAttribute('data-points');
+            if (!pointsData) return;
+            const points = JSON.parse(pointsData);
+            if (points.length === 0) return;
+            
+            const color = canvas.getAttribute('data-color');
+            new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: points.map((_, i) => i),
+                    datasets: [{
+                        data: points,
+                        borderColor: color,
+                        backgroundColor: color + '22',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false, min: Math.min(...points) * 0.95, max: Math.max(...points) * 1.05 }
+                    },
+                    layout: { padding: 0 }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

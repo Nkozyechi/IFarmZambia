@@ -1,0 +1,7 @@
+flask
+flask-login
+werkzeug
+numpy
+fpdf2
+gunicorn
+python-dotenv

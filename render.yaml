@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: ifarm-zambia
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      # Optional: after attaching a persistent disk, store SQLite there.
+      # - key: IFARM_DB_PATH
+      #   value: /var/data/ifarm.db
+    # Optional persistent disk for SQLite. Render documents that disks are only
+    # available on paid instances, so leave this commented unless you want it.
+    # disk:
+    #   name: ifarm-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
