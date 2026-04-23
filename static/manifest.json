@@ -1,0 +1,21 @@
+{
+  "name": "IFarm Zambia",
+  "short_name": "IFarm",
+  "description": "Farm Market Analysis & Price Prediction System for Zambian farmers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#16a34a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%2316a34a'/><path fill='white' d='M256 32c-35.3 0-64 28.7-64 64V256c0 35.3 28.7 64 64 64s64-28.7 64-64V96c0-35.3-28.7-64-64-64zM240 384h32v96h-32v-96z'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%2316a34a'/><path fill='white' d='M256 32c-35.3 0-64 28.7-64 64V256c0 35.3 28.7 64 64 64s64-28.7 64-64V96c0-35.3-28.7-64-64-64zM240 384h32v96h-32v-96z'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Crop Library - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-book-open"></i> Crop Information Library</h1>
+        <p class="subtitle">Detailed agrarian data, planting schedules, and soil preferences for supported crops.</p>
+    </div>
+</div>
+
+{% if not crop_info %}
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle"></i> Unable to load crop library data. Please ensure the data file exists.
+</div>
+{% else %}
+<div class="library-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+    {% for crop in crop_info %}
+    <div class="metric-card" style="display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; padding-top: 1.5rem;">
+        
+        <!-- Subtle Category Label -->
+        <span class="badge badge-{% if crop.category == 'Vegetables' %}green{% elif crop.category == 'Cereals' %}yellow{% else %}blue{% endif %}" 
+              style="position: absolute; top: 1rem; right: 1rem; font-size: 0.75rem;">
+            {{ crop.category }}
+        </span>
+
+        <div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <h2 style="margin: 0; font-size: 1.5rem; color: var(--text-light); display: flex; align-items: center; gap: 0.5rem;">
+                {% if crop.name == 'Tomatoes' or crop.name == 'Onions' or crop.name == 'Cabbage' %}
+                    <i class="fas fa-carrot" style="color: var(--accent-green);"></i>
+                {% elif crop.category == 'Cereals' %}
+                    <i class="fas fa-wheat" style="color: var(--accent-yellow);"></i>
+                {% else %}
+                    <i class="fas fa-seedling" style="color: var(--accent-blue);"></i>
+                {% endif %}
+                {{ crop.name }}
+            </h2>
+            <p style="font-size: 0.9rem; font-style: italic; color: var(--text-muted); margin-top: 0.25rem;">
+                ({{ crop.scientific_name }})
+            </p>
+        </div>
+        
+        <p style="font-size: 0.95rem; line-height: 1.5; color: var(--text-light); margin-bottom: 1.5rem; flex-grow: 1;">
+            {{ crop.description }}
+        </p>
+
+        <div style="background: var(--bg-body); padding: 1rem; border-radius: var(--radius-md); font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; gap: 0.75rem;">
+                <i class="fas fa-calendar-alt" style="color: var(--accent-blue); width: 16px; margin-top: 3px;"></i>
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Ideal Planting</span>
+                    <strong style="color: var(--text-light);">{{ crop.ideal_planting }}</strong>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem;">
+                <i class="fas fa-hourglass-half" style="color: var(--accent-yellow); width: 16px; margin-top: 3px;"></i>
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Maturity Period</span>
+                    <strong style="color: var(--text-light);">{{ crop.growth_period_days }} days</strong>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem;">
+                <i class="fas fa-layer-group" style="color: var(--accent-red); width: 16px; margin-top: 3px;"></i>
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Soil Preference</span>
+                    <span style="color: var(--text-light);">{{ crop.soil_preference }}</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem;">
+                <i class="fas fa-ruler-combined" style="color: var(--accent-green); width: 16px; margin-top: 3px;"></i>
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Recommended Spacing</span>
+                    <span style="color: var(--text-light);">{{ crop.spacing }}</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem;">
+                <i class="fas fa-star" style="color: #f59e0b; width: 16px; margin-top: 3px;"></i>
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Common Varieties</span>
+                    <span style="color: var(--text-light);">{{ crop.common_varieties }}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

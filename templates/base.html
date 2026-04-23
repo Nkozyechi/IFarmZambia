@@ -5,60 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="IFarm Zambia - Farm Market Analysis & Price Prediction System for Zambian farmers">
     <title>{% block title %}IFarm Zambia{% endblock %}</title>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IFarm Zambia">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
+    {% set is_landing = (request.endpoint == 'landing') or (request.endpoint == 'index' and not current_user.is_authenticated) %}
+    
+    {% if not is_landing %}
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
                 <i class="fas fa-seedling"></i>
-                <span>IFarm Zambia</span>
+                <span>{{ t('IFarm Zambia') }}</span>
             </div>
             <p class="logo-subtitle">Market Analysis System</p>
         </div>
 
         <div class="nav-links">
             <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                {% if current_user.is_authenticated %}
                 <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
+                <span>{{ t('Dashboard') }}</span>
+                {% else %}
+                <i class="fas fa-home"></i>
+                <span>{{ t('Home') }}</span>
+                {% endif %}
             </a>
             <a href="{{ url_for('analyze') }}" class="nav-link {% if request.endpoint == 'analyze' %}active{% endif %}">
                 <i class="fas fa-microscope"></i>
-                <span>Analyze Crop</span>
+                <span>{{ t('Analyze Crop') }}</span>
             </a>
             <a href="{{ url_for('compare') }}" class="nav-link {% if request.endpoint == 'compare' %}active{% endif %}">
                 <i class="fas fa-balance-scale"></i>
-                <span>Compare Crops</span>
+                <span>{{ t('Compare') }} Crops</span>
+            </a>
+            <a href="{{ url_for('crop_library') }}" class="nav-link {% if request.endpoint == 'crop_library' %}active{% endif %}">
+                <i class="fas fa-book-open"></i>
+                <span>{{ t('Crop Library') }}</span>
             </a>
             <a href="{{ url_for('import_data') }}" class="nav-link {% if request.endpoint == 'import_data' %}active{% endif %}">
                 <i class="fas fa-cloud-download-alt"></i>
                 <span>Import Data</span>
+            </a>
+            <a href="{{ url_for('marketplace') }}" class="nav-link {% if request.endpoint == 'marketplace' %}active{% endif %}">
+                <i class="fas fa-store"></i>
+                <span>{{ t('Marketplace') }}</span>
             </a>
 
             <div style="margin-top: auto; border-top: 1px solid rgba(226, 232, 240, 0.1); padding-top: 1rem; margin-bottom: 1rem;">
                 {% if current_user.is_authenticated %}
                 <div class="nav-link" style="opacity: 0.8; font-size: 0.85rem;">
                     <i class="fas fa-user-circle"></i>
-                    <span>Hello, {{ current_user.username }}</span>
+                    <span>{{ t('Welcome back') }}, {{ current_user.username }}</span>
                 </div>
                 <a href="{{ url_for('logout') }}" class="nav-link">
                     <i class="fas fa-sign-out-alt"></i>
-                    <span>Log Out</span>
+                    <span>{{ t('Log Out') }}</span>
                 </a>
                 {% else %}
                 <a href="{{ url_for('login') }}" class="nav-link {% if request.endpoint == 'login' %}active{% endif %}">
                     <i class="fas fa-sign-in-alt"></i>
-                    <span>Log In</span>
+                    <span>{{ t('Log In') }}</span>
                 </a>
                 <a href="{{ url_for('register') }}" class="nav-link {% if request.endpoint == 'register' %}active{% endif %}">
                     <i class="fas fa-user-plus"></i>
-                    <span>Register</span>
+                    <span>{{ t('Register') }}</span>
                 </a>
                 {% endif %}
+                
+                <div class="nav-link" style="padding-top: 10px;">
+                    <i class="fas fa-globe-africa"></i>
+                    <select onchange="window.location.href='/set_language/' + this.value" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 2px 5px; border-radius: 4px; outline: none; cursor: pointer; opacity: 0.9;">
+                        <option value="en" {% if current_lang == 'en' %}selected{% endif %} style="color: black;">English</option>
+                        <option value="bem" {% if current_lang == 'bem' %}selected{% endif %} style="color: black;">Bemba</option>
+                        <option value="nya" {% if current_lang == 'nya' %}selected{% endif %} style="color: black;">Nyanja</option>
+                        <option value="ton" {% if current_lang == 'ton' %}selected{% endif %} style="color: black;">Tonga</option>
+                        <option value="loz" {% if current_lang == 'loz' %}selected{% endif %} style="color: black;">Lozi</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -83,13 +118,23 @@
             <i class="fas fa-seedling"></i> IFarm Zambia
         </div>
     </header>
+    {% endif %}
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content {% if is_landing %}no-sidebar{% endif %}">
         {% block content %}{% endblock %}
     </main>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('ServiceWorker registered'))
+                    .catch(err => console.log('ServiceWorker error:', err));
+            });
+        }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

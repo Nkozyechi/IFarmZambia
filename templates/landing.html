@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+{% block title %}Welcome to IFarm Zambia - Smart Agriculture Decisions{% endblock %}
+
+{% block content %}
+<div class="landing-container">
+    <!-- Minimal Landing Nav -->
+    <nav class="landing-nav">
+        <div class="logo">
+            <i class="fas fa-seedling"></i>
+            <span>{{ t('IFarm Zambia') }}</span>
+        </div>
+        <div class="nav-actions">
+            <a href="{{ url_for('login') }}" class="btn btn-ghost">{{ t('Log In') }}</a>
+            <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">{{ t('Register') }}</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-sparkles"></i> <span>Data-Driven Farming for 2026</span>
+            </div>
+            <h1 class="hero-title">Empowering Zambian Farmers with <span>Precision Analytics</span></h1>
+            <p class="hero-subtitle">
+                Make smarter planting decisions using 15 years of historical market data and advanced forecasting algorithms. Maximize your yields and minimize market risks.
+            </p>
+            <div class="hero-actions">
+                <a href="{{ url_for('analyze') }}" class="btn btn-lg btn-primary">
+                    <i class="fas fa-rocket"></i> Get Started Free
+                </a>
+                <a href="#features" class="btn btn-lg btn-outline">
+                    Explore Features
+                </a>
+            </div>
+            <div class="hero-trust">
+                <p>Analyzing crops across all 10 provinces</p>
+                <div class="province-pills">
+                    <span>Lusaka</span> <span>Copperbelt</span> <span>Southern</span> <span>Eastern</span> <span>+6 More</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="glass-preview">
+                <div class="preview-header">
+                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                </div>
+                <div class="preview-body">
+                    <div class="preview-chart-header">
+                        <div class="preview-title">Price Prediction</div>
+                        <div class="preview-value">ZMW 14.50/kg</div>
+                    </div>
+                    <div class="preview-chart">
+                        <div class="bar" style="height: 40%"></div>
+                        <div class="bar" style="height: 60%"></div>
+                        <div class="bar" style="height: 50%"></div>
+                        <div class="bar" style="height: 80%"></div>
+                        <div class="bar" style="height: 70%"></div>
+                        <div class="bar" style="height: 90%"></div>
+                    </div>
+                    <div class="preview-stats">
+                        <div class="p-stat"><span>Demand</span><strong>High</strong></div>
+                        <div class="p-stat"><span>Risk</span><strong>Low</strong></div>
+                    </div>
+                </div>
+            </div>
+            <div class="floating-icon icon-1"><i class="fas fa-leaf"></i></div>
+            <div class="floating-icon icon-2"><i class="fas fa-chart-line"></i></div>
+            <div class="floating-icon icon-3"><i class="fas fa-cloud-sun-rain"></i></div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <div class="section-intro">
+            <h2 class="section-title">Why Choose IFarm Zambia?</h2>
+            <p>Our platform combines deep local expertise with modern data science.</p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                <h3>Intelligent Forecasting</h3>
+                <p>Ensemble of 4 specialized algorithms predicts future prices with high confidence intervals.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-calculator"></i></div>
+                <h3>ROI Calculator</h3>
+                <p>Calculate your exact net profit per hectare based on current seed, fertilizer, and labor costs.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                <h3>Offline Ready</h3>
+                <p>Installable PWA works in rural areas with poor connectivity. Access crop info anytime.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-language"></i></div>
+                <h3>Local Dialects</h3>
+                <p>Fully translated into Bemba, Nyanja, Tonga, and Lozi for maximum community impact.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="landing-stats">
+        <div class="l-stat-item">
+            <span class="l-stat-num">15+</span>
+            <span class="l-stat-label">Years of Data</span>
+        </div>
+        <div class="l-stat-item">
+            <span class="l-stat-num">8</span>
+            <span class="l-stat-label">Major Crops</span>
+        </div>
+        <div class="l-stat-item">
+            <span class="l-stat-num">10</span>
+            <span class="l-stat-label">Provinces</span>
+        </div>
+        <div class="l-stat-item">
+            <span class="l-stat-num">100%</span>
+            <span class="l-stat-label">Free Access</span>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-card">
+            <h2>Ready to plan your next harvest?</h2>
+            <p>Join thousands of farmers using data to secure their financial future.</p>
+            <div class="cta-buttons">
+                <a href="{{ url_for('register') }}" class="btn btn-lg btn-light">Create Account</a>
+                <a href="{{ url_for('index') }}" class="btn btn-lg btn-ghost" style="color: white; border: 1px solid rgba(255,255,255,0.3);">Go to Dashboard</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+    /* Landing Page Specific Styles */
+    .landing-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+        margin-bottom: 40px;
+    }
+
+    .landing-nav .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+    }
+
+    .landing-nav .logo i {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .landing-nav .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .landing-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding-top: 20px;
+    }
+
+    .hero-section {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 60px;
+        align-items: center;
+        padding: 60px 0;
+        min-height: 80vh;
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 100px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--accent-green);
+        margin-bottom: 24px;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 24px;
+        color: white;
+    }
+
+    .hero-title span {
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: 1.15rem;
+        color: var(--text-secondary);
+        margin-bottom: 36px;
+        max-width: 600px;
+        line-height: 1.6;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 48px;
+    }
+
+    .hero-trust p {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+
+    .province-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .province-pills span {
+        font-size: 0.8rem;
+        padding: 4px 12px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        color: var(--text-secondary);
+    }
+
+    .hero-visual {
+        position: relative;
+        display: flex;
+        justify-content: center;
+    }
+
+    .glass-preview {
+        width: 100%;
+        max-width: 340px;
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+    }
+
+    .preview-header {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 24px;
+    }
+
+    .preview-header .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .preview-chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .preview-title { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
+    .preview-value { font-size: 1.1rem; font-weight: 700; color: var(--accent-green); }
+
+    .preview-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        height: 120px;
+        margin-bottom: 24px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .preview-chart .bar {
+        flex: 1;
+        background: var(--gradient-primary);
+        border-radius: 4px 4px 0 0;
+        opacity: 0.6;
+        transition: opacity 0.3s;
+    }
+
+    .preview-chart .bar:last-child { opacity: 1; }
+
+    .preview-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .p-stat span { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+    .p-stat strong { font-size: 0.95rem; color: white; }
+
+    .floating-icon {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent-green);
+        font-size: 1.25rem;
+        box-shadow: var(--shadow-lg);
+        animation: float-slow 8s ease-in-out infinite;
+    }
+
+    .icon-1 { top: -20px; right: 20px; animation-delay: 0s; }
+    .icon-2 { bottom: 40px; left: -20px; animation-delay: 2s; }
+    .icon-3 { top: 100px; left: 10px; animation-delay: 4s; }
+
+    @keyframes float-slow {
+        0%, 100% { transform: translate(0, 0) rotate(0); }
+        33% { transform: translate(10px, -15px) rotate(5deg); }
+        66% { transform: translate(-10px, 10px) rotate(-5deg); }
+    }
+
+    .features-section {
+        padding: 100px 0;
+    }
+
+    .section-intro {
+        text-align: center;
+        margin-bottom: 60px;
+    }
+
+    .section-intro .section-title {
+        font-size: 2.5rem;
+        justify-content: center;
+    }
+
+    .section-intro p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 30px;
+    }
+
+    .feature-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 40px 30px;
+        text-align: center;
+        transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+        border-color: var(--accent-green);
+        transform: translateY(-10px);
+        box-shadow: var(--shadow-glow);
+    }
+
+    .feature-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(16, 185, 129, 0.1);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        font-size: 1.75rem;
+        color: var(--accent-green);
+    }
+
+    .feature-card h3 { margin-bottom: 16px; font-size: 1.25rem; }
+    .feature-card p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; }
+
+    .landing-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 60px;
+        margin-bottom: 100px;
+        text-align: center;
+    }
+
+    .l-stat-num {
+        display: block;
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--accent-green);
+        line-height: 1;
+        margin-bottom: 8px;
+    }
+
+    .l-stat-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+
+    .cta-section {
+        padding-bottom: 100px;
+    }
+
+    .cta-card {
+        background: var(--gradient-primary);
+        border-radius: 30px;
+        padding: 80px 40px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 20px 40px rgba(16, 185, 129, 0.2);
+    }
+
+    .cta-card h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 16px; }
+    .cta-card p { font-size: 1.1rem; opacity: 0.9; margin-bottom: 40px; }
+
+    .cta-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    @media (max-width: 992px) {
+        .hero-section { grid-template-columns: 1fr; text-align: center; gap: 40px; }
+        .hero-subtitle { margin-left: auto; margin-right: auto; }
+        .hero-actions { justify-content: center; }
+        .province-pills { justify-content: center; }
+        .hero-title { font-size: 2.75rem; }
+        .landing-stats { grid-template-columns: 1fr 1fr; padding: 40px 20px; }
+    }
+
+    @media (max-width: 576px) {
+        .hero-title { font-size: 2.25rem; }
+        .cta-buttons { flex-direction: column; }
+        .l-stat-num { font-size: 2.25rem; }
+    }
+</style>
+{% endblock %}

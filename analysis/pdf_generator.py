@@ -53,10 +53,10 @@ def generate_report_pdf(report_data):
     
     # Recommendation Banner
     rec_val = report_data['recommendation']['verdict']
-    if rec_val == 'Strongly Recommend' or rec_val == 'Recommend':
+    if rec_val == 'RECOMMENDED':
         fill_color = (209, 250, 229)
         text_color = (6, 95, 70)
-    elif rec_val == 'Proceed with Caution' or rec_val == 'Consider Alternatives':
+    elif rec_val == 'PROCEED WITH CAUTION':
         fill_color = (254, 243, 199)
         text_color = (146, 64, 14)
     else:
@@ -93,6 +93,7 @@ def generate_report_pdf(report_data):
         pdf.set_text_color(51, 65, 85)
         pdf.multi_cell(0, 6, f"Cost Basis: {prof.get('cost_source_label', 'Database average production costs per hectare')}")
         pdf.cell(0, 6, f"Farm Size: {prof['farm_size_ha']} hectares", ln=True)
+        pdf.cell(0, 6, f"Irrigation System: {'Enabled' if prof.get('has_irrigation') else 'None'}", ln=True)
         pdf.cell(0, 6, f"Seed Cost: ZMW {prof['breakdown']['seed']:.2f} /ha", ln=True)
         pdf.cell(0, 6, f"Fertilizer Cost: ZMW {prof['breakdown']['fertilizer']:.2f} /ha", ln=True)
         pdf.cell(0, 6, f"Chemicals Cost: ZMW {prof['breakdown']['chemicals']:.2f} /ha", ln=True)

@@ -98,6 +98,20 @@ def init_db():
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS marketplace_listings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            crop_id INTEGER NOT NULL,
+            quantity_kg REAL NOT NULL,
+            price_per_kg REAL NOT NULL,
+            location TEXT NOT NULL,
+            contact_info TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (crop_id) REFERENCES crops(id)
+        );
     ''')
 
     conn.commit()
@@ -211,6 +225,57 @@ def create_user(username, password_hash):
         conn.commit()
         return True
     except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
+# ── Marketplace Functions ────────────────────────────────────────────────────
+
+def get_marketplace_listings(limit=50):
+    """Retrieve recent marketplace listings."""
+    conn = get_db()
+    query = '''
+        SELECT m.*, u.username, c.name as crop_name, c.category as crop_category
+        FROM marketplace_listings m
+        JOIN users u ON m.user_id = u.id
+        JOIN crops c ON m.crop_id = c.id
+        ORDER BY m.created_at DESC
+        LIMIT ?
+    '''
+    listings = conn.execute(query, (limit,)).fetchall()
+    conn.close()
+    return [dict(l) for l in listings]
+
+
+def add_marketplace_listing(user_id, crop_id, quantity_kg, price_per_kg, location, contact_info, description=''):
+    """Add a new marketplace listing."""
+    conn = get_db()
+    try:
+        conn.execute('''
+            INSERT INTO marketplace_listings 
+            (user_id, crop_id, quantity_kg, price_per_kg, location, contact_info, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, crop_id, quantity_kg, price_per_kg, location, contact_info, description))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error adding listing: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def delete_marketplace_listing(listing_id, user_id):
+    """Delete a marketplace listing (only if owned by the user)."""
+    conn = get_db()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM marketplace_listings WHERE id = ? AND user_id = ?', (listing_id, user_id))
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Error deleting listing: {e}")
         return False
     finally:
         conn.close()

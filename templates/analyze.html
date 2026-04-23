@@ -68,6 +68,26 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="form-group">
+                <label for="start_year"><i class="fas fa-calendar-alt"></i> Data Start Year</label>
+                <select name="start_year" id="start_year" required>
+                    {% for year in range(2011, 2026) %}
+                    <option value="{{ year }}" {% if selected_start_year is defined and selected_start_year == year %}selected{% elif not selected_start_year and year == 2011 %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="end_year"><i class="fas fa-calendar-alt"></i> Data End Year</label>
+                <select name="end_year" id="end_year" required>
+                    {% for year in range(2011, 2026) %}
+                    <option value="{{ year }}" {% if selected_end_year is defined and selected_end_year == year %}selected{% elif not selected_end_year and year == 2025 %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <details class="advanced-options" {% if selected_use_custom_costs %}open{% endif %}>
             <summary>
@@ -81,6 +101,16 @@
                 </label>
                 <p class="form-help">
                     Leave this off to use the database's average costs per hectare. Turn it on to enter your own ZMW estimates for seeds, fertilizer, chemicals, and labor.
+                </p>
+                
+                <hr style="margin: 1.2rem 0; border: 0; border-top: 1px solid var(--border-color); opacity: 0.3;">
+
+                <label class="advanced-toggle" for="has_irrigation">
+                    <input type="checkbox" name="has_irrigation" id="has_irrigation" value="1" {% if selected_has_irrigation %}checked{% endif %}>
+                    <span>Farmer has an irrigation system</span>
+                </label>
+                <p class="form-help">
+                    Enable this if the farm has a functional irrigation system. This will factor in irrigation costs and significantly boost yield potential during Zambia's dry season (May-October).
                 </p>
                 <div class="form-grid advanced-cost-grid">
                     <div class="form-group">
@@ -132,10 +162,45 @@
             <span>Confidence Score: {{ report.recommendation.score }}/100</span>
         </div>
     </div>
-    <a href="{{ url_for('report', crop_id=selected_crop, planting_month=selected_planting, harvest_start=selected_harvest_start, harvest_end=selected_harvest_end, farm_size_ha=selected_farm_size, province=selected_province, use_custom_costs='1' if selected_use_custom_costs else None, seed_cost=selected_custom_costs.seed if selected_use_custom_costs else None, fertilizer_cost=selected_custom_costs.fertilizer if selected_use_custom_costs else None, chemical_cost=selected_custom_costs.chemicals if selected_use_custom_costs else None, labor_cost=selected_custom_costs.labor if selected_use_custom_costs else None) }}" class="btn btn-light">
+    <a href="{{ url_for('report', crop_id=selected_crop, planting_month=selected_planting, harvest_start=selected_harvest_start, harvest_end=selected_harvest_end, farm_size_ha=selected_farm_size, province=selected_province, start_year=selected_start_year, end_year=selected_end_year, use_custom_costs='1' if selected_use_custom_costs else None, seed_cost=selected_custom_costs.seed if selected_use_custom_costs else None, fertilizer_cost=selected_custom_costs.fertilizer if selected_use_custom_costs else None, chemical_cost=selected_custom_costs.chemicals if selected_use_custom_costs else None, labor_cost=selected_custom_costs.labor if selected_use_custom_costs else None, has_irrigation='1' if selected_has_irrigation else None) }}" class="btn btn-light">
         <i class="fas fa-file-alt"></i> Full Report
     </a>
 </div>
+
+{% if weather and weather.forecast %}
+<!-- Weather Forecast -->
+<div class="weather-section" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+    <h3 style="margin-bottom: 1rem;"><i class="fas fa-cloud-sun-rain" style="color: var(--accent-blue);"></i> 7-Day Weather Forecast for {{ weather.province }}</h3>
+    <div style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: thin;">
+        {% for day in weather.forecast %}
+        <div class="weather-card" style="flex: 1; min-width: 120px; text-align: center; background: var(--bg-card); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 600; margin-bottom: 0.25rem;">{{ day.day[:3] }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.8rem;">{{ day.date.split('-')[1:]|join('/') }}</div>
+            <div style="font-size: 1.8rem; margin-bottom: 0.8rem; color: var(--text-light);">
+                {% if day.precipitation > 5 %}
+                    <i class="fas fa-cloud-showers-heavy" style="color: var(--accent-blue);"></i>
+                {% elif day.precipitation > 0 %}
+                    <i class="fas fa-cloud-rain" style="color: var(--accent-blue);"></i>
+                {% elif day.temp_max > 30 %}
+                    <i class="fas fa-sun" style="color: var(--accent-yellow);"></i>
+                {% else %}
+                    <i class="fas fa-cloud-sun" style="color: var(--text-muted);"></i>
+                {% endif %}
+            </div>
+            <div style="display: flex; justify-content: space-around; font-size: 1rem; font-weight: 500;">
+                <span style="color: var(--accent-red);">{{ day.temp_max|round|int }}°</span>
+                <span style="color: var(--text-muted);">{{ day.temp_min|round|int }}°</span>
+            </div>
+            {% if day.precipitation > 0 %}
+            <div style="font-size: 0.8rem; color: var(--accent-blue); margin-top: 0.5rem;">
+                <i class="fas fa-tint"></i> {{ day.precipitation }}mm
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 <!-- Key Metrics -->
 <div class="metrics-grid">

@@ -9,16 +9,18 @@ https://zambia.opendataforafrica.org/etqmqgf/agriculture-statistics-2011-2025
 import os
 import json
 import sqlite3
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from models.database import get_db, get_db_path, get_crop_list, get_crop_by_id, get_price_history
 from models.database import get_user_by_id, get_user_by_username, create_user
+from models.database import get_marketplace_listings, add_marketplace_listing, delete_marketplace_listing
 from analysis.historical import analyze_price_history
 from analysis.prediction import predict_price
 from analysis.demand import analyze_demand
 from analysis.decision import generate_decision_report
+from analysis.weather import get_weather_forecast
 from data.seed_data import seed_database
 
 app = Flask(__name__)
@@ -76,7 +78,14 @@ def empty_custom_costs():
     """Return an empty custom-cost payload for template defaults."""
     return {key: '' for key, _ in CUSTOM_COST_FIELDS}
 
+# Load Translations Dictionary
+try:
+    with open('static/data/translations.json', 'r', encoding='utf-8') as f:
+        TRANSLATIONS = json.load(f)
+except FileNotFoundError:
+    TRANSLATIONS = {'en': {}}
 
+# Custom fields for per-hectare cost overrides
 def parse_custom_costs(values):
     """Extract optional per-hectare custom costs from form or query params."""
     use_custom_costs = str(values.get('use_custom_costs', '')).lower() in {'1', 'true', 'on', 'yes'}
@@ -105,12 +114,34 @@ def parse_custom_costs(values):
     return use_custom_costs, (parsed_costs if use_custom_costs else None), selected_costs
 
 
+# ── Localization ─────────────────────────────────────────────────────────────
+
+@app.route('/set_language/<lang_code>')
+def set_language(lang_code):
+    """Set the user's preferred language in the session."""
+    if lang_code in TRANSLATIONS:
+        session['lang'] = lang_code
+    return redirect(request.referrer or url_for('index'))
+
+@app.context_processor
+def inject_translations():
+    """Inject the translation function `t` into all Jinja templates."""
+    def t(key):
+        lang = session.get('lang', 'en')
+        return TRANSLATIONS.get(lang, {}).get(key, TRANSLATIONS.get('en', {}).get(key, key))
+    
+    return dict(t=t, current_lang=session.get('lang', 'en'))
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
-    """Dashboard - overview of all crops."""
+    """Home page - landing page for new users, dashboard for logged in."""
     ensure_db()
+    
+    if not current_user.is_authenticated:
+        return render_template('landing.html')
+        
     crops = get_crop_list()
     
     # Get latest price for each crop
@@ -140,6 +171,12 @@ def index():
     return render_template('index.html', crops=crop_summaries, months=MONTH_NAMES)
 
 
+@app.route('/landing')
+def landing():
+    """Explicit landing page view."""
+    return render_template('landing.html')
+
+
 @app.route('/analyze', methods=['GET', 'POST'])
 def analyze():
     """Crop analysis page."""
@@ -153,6 +190,13 @@ def analyze():
         harvest_end = int(request.form.get('harvest_end', 5))
         farm_size_ha = float(request.form.get('farm_size_ha', 1.0))
         province = request.form.get('province', 'National')
+        
+        start_year = request.form.get('start_year')
+        start_year = int(start_year) if start_year else None
+        end_year = request.form.get('end_year')
+        end_year = int(end_year) if end_year else None
+
+        has_irrigation = request.form.get('has_irrigation') == '1'
         use_custom_costs, custom_costs, selected_custom_costs = parse_custom_costs(request.form)
 
         # Build harvest months list
@@ -167,10 +211,14 @@ def analyze():
             farm_size_ha=farm_size_ha,
             custom_costs=custom_costs,
             province=province,
+            start_year=start_year,
+            end_year=end_year,
+            has_irrigation=has_irrigation,
         )
-        historical = analyze_price_history(crop_id, province=province)
-        prediction = predict_price(crop_id, harvest_months, target_year=2026, province=province)
-        demand = analyze_demand(crop_id, harvest_months, target_year=2026, province=province)
+        historical = analyze_price_history(crop_id, start_year=start_year, end_year=end_year, province=province)
+        prediction = predict_price(crop_id, harvest_months, target_year=2026, province=province, start_year=start_year, end_year=end_year)
+        demand = analyze_demand(crop_id, harvest_months, target_year=2026, province=province, start_year=start_year, end_year=end_year)
+        weather = get_weather_forecast(province)
         
         return render_template(
             'analyze.html',
@@ -180,6 +228,7 @@ def analyze():
             historical=historical,
             prediction=prediction,
             demand=demand,
+            weather=weather,
             selected_crop=crop_id,
             selected_planting=planting_month,
             selected_harvest_start=harvest_start,
@@ -188,6 +237,9 @@ def analyze():
             selected_province=province,
             selected_use_custom_costs=use_custom_costs,
             selected_custom_costs=selected_custom_costs,
+            selected_has_irrigation=has_irrigation,
+            selected_start_year=start_year,
+            selected_end_year=end_year,
             provinces=PROVINCES
         )
     
@@ -199,6 +251,7 @@ def analyze():
         report=None,
         selected_use_custom_costs=False,
         selected_custom_costs=empty_custom_costs(),
+        selected_has_irrigation=False,
     )
 
 
@@ -208,8 +261,12 @@ def report(crop_id, planting_month, harvest_start, harvest_end, farm_size_ha, pr
     """Full decision report page."""
     ensure_db()
     use_custom_costs, custom_costs, selected_custom_costs = parse_custom_costs(request.args)
+    has_irrigation = request.args.get('has_irrigation') == '1'
     harvest_months = build_harvest_months(harvest_start, harvest_end)
     
+    start_year = request.args.get('start_year', type=int)
+    end_year = request.args.get('end_year', type=int)
+
     report_data = generate_decision_report(
         crop_id,
         planting_month,
@@ -218,6 +275,9 @@ def report(crop_id, planting_month, harvest_start, harvest_end, farm_size_ha, pr
         farm_size_ha=farm_size_ha,
         custom_costs=custom_costs,
         province=province,
+        start_year=start_year,
+        end_year=end_year,
+        has_irrigation=has_irrigation,
     )
     
     if not report_data:
@@ -228,7 +288,10 @@ def report(crop_id, planting_month, harvest_start, harvest_end, farm_size_ha, pr
                            harvest_start=harvest_start, harvest_end=harvest_end,
                            farm_size_ha=farm_size_ha, province=province,
                            selected_use_custom_costs=use_custom_costs,
-                           selected_custom_costs=selected_custom_costs)
+                           selected_custom_costs=selected_custom_costs,
+                           selected_has_irrigation=has_irrigation,
+                           selected_start_year=start_year,
+                           selected_end_year=end_year)
 
 
 @app.route('/report/<int:crop_id>/<int:planting_month>/<int:harvest_start>/<int:harvest_end>/<float:farm_size_ha>/<string:province>/pdf')
@@ -237,8 +300,12 @@ def report_pdf(crop_id, planting_month, harvest_start, harvest_end, farm_size_ha
     """Download full decision report as PDF."""
     ensure_db()
     _, custom_costs, _ = parse_custom_costs(request.args)
+    has_irrigation = request.args.get('has_irrigation') == '1'
     harvest_months = build_harvest_months(harvest_start, harvest_end)
     
+    start_year = request.args.get('start_year', type=int)
+    end_year = request.args.get('end_year', type=int)
+
     report_data = generate_decision_report(
         crop_id,
         planting_month,
@@ -247,6 +314,9 @@ def report_pdf(crop_id, planting_month, harvest_start, harvest_end, farm_size_ha
         farm_size_ha=farm_size_ha,
         custom_costs=custom_costs,
         province=province,
+        start_year=start_year,
+        end_year=end_year,
+        has_irrigation=has_irrigation,
     )
     
     if not report_data:
@@ -269,7 +339,10 @@ def report_csv(crop_id, planting_month, harvest_start, harvest_end, farm_size_ha
     """Download historical data as CSV."""
     ensure_db()
     
-    historical = analyze_price_history(crop_id, province=province)
+    start_year = request.args.get('start_year', type=int)
+    end_year = request.args.get('end_year', type=int)
+
+    historical = analyze_price_history(crop_id, start_year=start_year, end_year=end_year, province=province)
     if not historical:
         return redirect(url_for('analyze'))
         
@@ -321,6 +394,63 @@ def compare():
                                selected_province=province, provinces=PROVINCES)
 
     return render_template('compare.html', crops=crops, months=MONTH_NAMES, reports=None, provinces=PROVINCES)
+
+
+@app.route('/marketplace', methods=['GET'])
+def marketplace():
+    """Marketplace view showing all listings."""
+    ensure_db()
+    listings = get_marketplace_listings()
+    crops = get_crop_list()
+    return render_template('marketplace.html', listings=listings, crops=crops, provinces=PROVINCES)
+
+
+@app.route('/marketplace/add', methods=['POST'])
+@login_required
+def marketplace_add():
+    ensure_db()
+    try:
+        crop_id = int(request.form.get('crop_id', 1))
+        quantity_kg = float(request.form.get('quantity_kg', 1.0))
+        price_per_kg = float(request.form.get('price_per_kg', 1.0))
+        location = request.form.get('location', '')
+        contact_info = request.form.get('contact_info', '')
+        description = request.form.get('description', '')
+        
+        if add_marketplace_listing(current_user.id, crop_id, quantity_kg, price_per_kg, location, contact_info, description):
+            flash('Your harvest was listed on the marketplace successfully!', 'success')
+        else:
+            flash('An error occurred while listing your harvest.', 'danger')
+    except (ValueError, TypeError):
+        flash('Invalid inputs provided for the listing.', 'danger')
+        
+    return redirect(url_for('marketplace'))
+
+
+@app.route('/marketplace/delete/<int:listing_id>', methods=['POST'])
+@login_required
+def marketplace_delete(listing_id):
+    ensure_db()
+    if delete_marketplace_listing(listing_id, current_user.id):
+        flash('Listing removed successfully.', 'info')
+    else:
+        flash('Error removing listing. You might not have permission, or it was already removed.', 'danger')
+    return redirect(url_for('marketplace'))
+
+
+@app.route('/library')
+def crop_library():
+    """Crop Information Library view."""
+    ensure_db()
+    try:
+        json_path = os.path.join(os.path.dirname(__file__), 'static', 'data', 'crop_info.json')
+        with open(json_path, 'r') as f:
+            crop_info = json.load(f)
+    except Exception as e:
+        print(f"Error loading crop library data: {e}")
+        crop_info = []
+        
+    return render_template('library.html', crop_info=crop_info)
 
 # ── API Routes ───────────────────────────────────────────────────────────────
 
@@ -546,6 +676,8 @@ def logout():
 
 if __name__ == '__main__':
     ensure_db()
+    from models.database import init_db
+    init_db()  # Ensures new tables like marketplace_listings are created
     port = int(os.environ.get('PORT', '5050'))
     debug = os.environ.get('FLASK_DEBUG', '').lower() in {'1', 'true', 'yes', 'on'}
     app.run(host='0.0.0.0', port=port, debug=debug)

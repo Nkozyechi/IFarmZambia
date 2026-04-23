@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Marketplace - IFarm Zambia{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="fas fa-store"></i> Farmer Marketplace</h1>
+        <p class="subtitle">Connect directly with buyers and advertise your upcoming harvests.</p>
+    </div>
+    {% if current_user.is_authenticated %}
+    <button class="btn btn-primary" onclick="document.getElementById('addListingForm').style.display='block'; window.scrollTo(0, document.body.scrollHeight);">
+        <i class="fas fa-plus"></i> Add Listing
+    </button>
+    {% else %}
+    <a href="{{ url_for('login', next=request.path) }}" class="btn btn-outline">
+        <i class="fas fa-sign-in-alt"></i> Login to Sell
+    </a>
+    {% endif %}
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: var(--radius-md); background: {% if category == 'success' %}var(--bg-success){% else %}var(--bg-card){% endif %}; border: 1px solid {% if category == 'success' %}var(--accent-green){% else %}var(--border-color){% endif %};">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{% if not listings %}
+<div class="empty-state" style="text-align: center; padding: 4rem 2rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-color);">
+    <i class="fas fa-store-slash" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+    <h2>No Active Listings</h2>
+    <p style="color: var(--text-muted);">Be the first to list your harvest!</p>
+</div>
+{% else %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+    {% for listing in listings %}
+    <div class="metric-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <h3 style="margin: 0; font-size: 1.25rem;">{{ listing.crop_name }}</h3>
+                <span class="badge badge-green">ZMW {{ "%.2f"|format(listing.price_per_kg) }}/kg</span>
+            </div>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">{{ listing.crop_category }}</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;"><i class="fas fa-weight-hanging"></i> Available</p>
+                <div style="font-weight: 500;">{{ "{:,.1f}".format(listing.quantity_kg) }} kg</div>
+            </div>
+            <div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;"><i class="fas fa-map-marker-alt"></i> Location</p>
+                <div style="font-weight: 500;">{{ listing.location }}</div>
+            </div>
+        </div>
+
+        {% if listing.description %}
+        <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem; font-style: italic;">
+            "{{ listing.description }}"
+        </p>
+        {% endif %}
+
+        <div style="background: var(--bg-body); padding: 0.75rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;"><i class="fas fa-phone"></i> Contact {{ listing.username }}</p>
+            <div style="font-weight: 600; color: var(--accent-blue);">{{ listing.contact_info }}</div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted);">
+            <span><i class="far fa-clock"></i> Listed on {{ listing.created_at.split(' ')[0] }}</span>
+            {% if current_user.is_authenticated and current_user.id == listing.user_id %}
+            <form action="{{ url_for('marketplace_delete', listing_id=listing.id) }}" method="POST" style="margin: 0;">
+                <button type="submit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--accent-red); border-color: var(--accent-red);" onclick="return confirm('Are you sure you want to remove this listing?');">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if current_user.is_authenticated %}
+<!-- Add Listing Form -->
+<div id="addListingForm" class="analysis-form-card" style="display: none; box-shadow: var(--shadow-xl); border: 2px solid var(--accent-green);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <h2 style="margin: 0;"><i class="fas fa-plus-circle"></i> Create a New Listing</h2>
+        <button class="btn btn-outline" onclick="document.getElementById('addListingForm').style.display='none';">
+            <i class="fas fa-times"></i> Cancel
+        </button>
+    </div>
+    <form method="POST" action="{{ url_for('marketplace_add') }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="crop_id">Select Crop</label>
+                <select name="crop_id" id="crop_id" required class="form-control">
+                    {% for crop in crops %}
+                    <option value="{{ crop.id }}">{{ crop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quantity_kg">Total Quantity (kg)</label>
+                <input type="number" name="quantity_kg" id="quantity_kg" min="1" step="0.5" required class="form-control" placeholder="e.g. 500">
+            </div>
+            <div class="form-group">
+                <label for="price_per_kg">Asking Price (ZMW/kg)</label>
+                <input type="number" name="price_per_kg" id="price_per_kg" min="0" step="0.01" required class="form-control" placeholder="e.g. 15.50">
+            </div>
+            <div class="form-group">
+                <label for="location">Location (Town, Province or Market)</label>
+                <input type="text" name="location" id="location" required class="form-control" placeholder="e.g. Soweto Market, Lusaka">
+            </div>
+            <div class="form-group">
+                <label for="contact_info">Contact Number</label>
+                <input type="text" name="contact_info" id="contact_info" required class="form-control" placeholder="e.g. 0970000000">
+            </div>
+            <div class="form-group">
+                <label for="description">Additional Details (Optional)</label>
+                <textarea name="description" id="description" class="form-control" placeholder="e.g. First grade tomatoes, ready to harvest next week." style="min-height: 48px; resize: vertical;"></textarea>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">
+            <i class="fas fa-bullhorn"></i> Publish Listing
+        </button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

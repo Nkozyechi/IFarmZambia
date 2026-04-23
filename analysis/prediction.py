@@ -18,7 +18,7 @@ MONTH_NAMES = [
 ]
 
 
-def predict_price(crop_id, target_months, target_year=2026, province='National'):
+def predict_price(crop_id, target_months, target_year=2026, province='National', start_year=None, end_year=None):
     """
     Predict crop prices for target harvest months using multiple methods.
     
@@ -30,7 +30,7 @@ def predict_price(crop_id, target_months, target_year=2026, province='National')
     Returns:
         dict with predictions from each method and a combined forecast.
     """
-    records = get_price_history(crop_id, None, None, province)
+    records = get_price_history(crop_id, start_year, end_year, province)
     crop = get_crop_by_id(crop_id)
     
     if not records:

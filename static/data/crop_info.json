@@ -1,0 +1,98 @@
+[
+  {
+    "id": 1,
+    "name": "Maize",
+    "category": "Cereals",
+    "scientific_name": "Zea mays",
+    "growth_period_days": "90 - 130",
+    "ideal_planting": "November to December",
+    "soil_preference": "Well-drained loamy soil, pH 5.5 - 7.0",
+    "spacing": "75cm between rows, 25cm between plants",
+    "common_varieties": "SC 419, SC 513, PAN 53",
+    "description": "Zambia's staple crop. Requires good rains early in the season. Proper basal and top dressing fertilizer application is critical for high yields."
+  },
+  {
+    "id": 2,
+    "name": "Tomatoes",
+    "category": "Vegetables",
+    "scientific_name": "Solanum lycopersicum",
+    "growth_period_days": "75 - 90 (after transplanting)",
+    "ideal_planting": "Year-round (with irrigation), March-July for best prices",
+    "soil_preference": "Deep, well-drained sandy loam, pH 6.0 - 6.8",
+    "spacing": "60cm between rows, 45cm between plants",
+    "common_varieties": "Tengeru 97, Roma, Kilele F1",
+    "description": "High value but highly perishable. Requires staking, regular irrigation, and strict pest/disease management (especially against Tuta absoluta and Blight)."
+  },
+  {
+    "id": 3,
+    "name": "Onions",
+    "category": "Vegetables",
+    "scientific_name": "Allium cepa",
+    "growth_period_days": "90 - 120 (after transplanting)",
+    "ideal_planting": "February to April (nursery), April to June (transplanting)",
+    "soil_preference": "Loose, well-drained loamy soil, pH 6.0 - 6.8",
+    "spacing": "30cm between rows, 10cm between plants",
+    "common_varieties": "Texas Grano, Red Creole, Neptune F1",
+    "description": "Requires well-prepared beds. Proper curing after harvest is essential for long shelf life to fetch better prices in the off-season."
+  },
+  {
+    "id": 4,
+    "name": "Cabbage",
+    "category": "Vegetables",
+    "scientific_name": "Brassica oleracea var. capitata",
+    "growth_period_days": "60 - 90 (after transplanting)",
+    "ideal_planting": "Year-round (with irrigation), best in cooler months (April-July)",
+    "soil_preference": "Heavy, well-drained loams, pH 6.0 - 6.5",
+    "spacing": "60cm between rows, 50cm between plants",
+    "common_varieties": "Gloria F1, Marcanta F1, Fabiola F1",
+    "description": "Heavy feeder requiring high nitrogen. Susceptible to Diamondback moth. Does exceptionally well heading into Zambia's cool dry season."
+  },
+  {
+    "id": 5,
+    "name": "Irish Potatoes",
+    "category": "Root Tubers",
+    "scientific_name": "Solanum tuberosum",
+    "growth_period_days": "90 - 120",
+    "ideal_planting": "August to September (irrigated), Nov-Dec (rainfed)",
+    "soil_preference": "Deep, loose, well-drained sandy loam, pH 5.0 - 6.0",
+    "spacing": "75cm between rows, 30cm between tubers",
+    "common_varieties": "BP1, Mondial, Up-to-Date",
+    "description": "Requires certified disease-free seed. High yields depend heavily on regular earthing up and strict Late Blight control."
+  },
+  {
+    "id": 6,
+    "name": "Groundnuts",
+    "category": "Legumes",
+    "scientific_name": "Arachis hypogaea",
+    "growth_period_days": "100 - 140",
+    "ideal_planting": "November to December",
+    "soil_preference": "Light sandy loam, well-drained, pH 5.5 - 7.0",
+    "spacing": "45cm between rows, 10cm between plants",
+    "common_varieties": "MGV 4, MGV 5, Chalimbana",
+    "description": "Drought tolerant. Needs calcium (Gypsum) at the pegging stage for proper pod filling. Harvest promptly to avoid aflatoxin contamination."
+  },
+  {
+    "id": 7,
+    "name": "Soybeans",
+    "category": "Legumes",
+    "scientific_name": "Glycine max",
+    "growth_period_days": "100 - 130",
+    "ideal_planting": "December to early January",
+    "soil_preference": "Well-drained loams or clay loams, pH 5.8 - 6.5",
+    "spacing": "45cm between rows, 5cm between plants",
+    "common_varieties": "Dina, Safari, Mwembeshi",
+    "description": "High commercial demand for oil and stock feed. Needs Rhizobium inoculant at planting for optimal nitrogen fixation."
+  },
+  {
+    "id": 8,
+    "name": "Wheat",
+    "category": "Cereals",
+    "scientific_name": "Triticum aestivum",
+    "growth_period_days": "110 - 130",
+    "ideal_planting": "May to June",
+    "soil_preference": "Silt or clay loam, well-drained, pH 6.0 - 7.0",
+    "spacing": "Broadcasted or drilled at 20cm row spacing",
+    "common_varieties": "Nduna, Loerie, Coucal",
+    "description": "Grown strictly under irrigation in Zambia during the cool dry season. Requires heavy capital investment in irrigation pivots."
+  }
+]

@@ -20,7 +20,7 @@ MONTH_NAMES = [
 ]
 
 
-def generate_decision_report(crop_id, planting_month, harvest_months, target_year=2026, farm_size_ha=1.0, custom_costs=None, province='National'):
+def generate_decision_report(crop_id, planting_month, harvest_months, target_year=2026, farm_size_ha=1.0, custom_costs=None, province='National', start_year=None, end_year=None, has_irrigation=False):
     """
     Generate a comprehensive decision report for planting decisions.
     
@@ -31,6 +31,7 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
         target_year: year to predict for
         farm_size_ha: size of the farm in hectares for profitability calc
         custom_costs: dict of custom costs replacing the generic DB costs
+        has_irrigation: boolean if the farm has an irrigation system
     
     Returns:
         Complete decision report dict.
@@ -40,9 +41,9 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
         return None
 
     # Run all analysis modules
-    historical = analyze_price_history(crop_id, province=province)
-    price_prediction = predict_price(crop_id, harvest_months, target_year, province=province)
-    demand_analysis = analyze_demand(crop_id, harvest_months, target_year, province=province)
+    historical = analyze_price_history(crop_id, start_year=start_year, end_year=end_year, province=province)
+    price_prediction = predict_price(crop_id, harvest_months, target_year, province=province, start_year=start_year, end_year=end_year)
+    demand_analysis = analyze_demand(crop_id, harvest_months, target_year, province=province, start_year=start_year, end_year=end_year)
 
     if not historical or not price_prediction or not demand_analysis:
         return None
@@ -97,6 +98,22 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
     # ── Profitability Calculation ────────────────────────────────────
     prod_history = get_production_history(crop_id, province=province)
     latest_yield_mt_per_ha = prod_history[-1]['yield_mt_per_ha'] if prod_history else 0
+    
+    # ── Irrigation Logic: Yield Bonus ────────────────────────────────
+    # Zambia Dry Season: May (5) to October (10)
+    is_dry_season = 5 <= planting_month <= 10
+    irrigation_yield_factor = 1.0
+    
+    if has_irrigation:
+        if is_dry_season:
+            irrigation_yield_factor = 1.25  # 25% boost in dry season
+        else:
+            irrigation_yield_factor = 1.10  # 10% stability boost in rainy season
+    elif is_dry_season:
+        # Rain-fed farming in dry season carries a penalty/risk
+        irrigation_yield_factor = 0.80  # 20% penalty for dry season without irrigation
+        
+    latest_yield_mt_per_ha *= irrigation_yield_factor
     total_yield_kg = latest_yield_mt_per_ha * 1000 * farm_size_ha
     
     production_costs = get_production_costs(crop_id)
@@ -117,6 +134,11 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
             'other': production_costs['other_costs_per_ha']
         }
 
+    # ── Irrigation Logic: Operational Cost ───────────────────────────
+    if has_irrigation:
+        # Add 500 ZMW/ha for irrigation maintenance, fuel, and labor
+        default_breakdown['other'] += 500.0
+
     uses_custom_costs = bool(custom_costs)
     if uses_custom_costs:
         breakdown = {
@@ -131,9 +153,9 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
 
     cost_per_ha = sum(breakdown.values())
     cost_source_label = (
-        'Custom seed, fertilizer, chemicals, and labor inputs'
+        'Custom inputs' + (' (incl. irrigation ops)' if has_irrigation else '')
         if uses_custom_costs else
-        'Database average production costs per hectare'
+        'Database averages' + (' (incl. irrigation ops)' if has_irrigation else '')
     )
 
     total_cost = cost_per_ha * farm_size_ha
@@ -146,13 +168,14 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
         'cost_per_ha': cost_per_ha,
         'total_cost': total_cost,
         'breakdown': breakdown,
-        'yield_mt_per_ha': latest_yield_mt_per_ha,
+        'yield_mt_per_ha': round(latest_yield_mt_per_ha, 3),
         'total_yield_kg': total_yield_kg,
         'projected_revenue': projected_revenue,
         'projected_profit': projected_profit,
         'roi_pct': roi_pct,
         'is_profitable': projected_profit > 0,
         'uses_custom_costs': uses_custom_costs,
+        'has_irrigation': has_irrigation,
         'cost_source': 'custom' if uses_custom_costs else 'database_average',
         'cost_source_label': cost_source_label,
     }
@@ -160,13 +183,15 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
     # ── Risk Assessment ──────────────────────────────────────────────
     risks = _assess_risks(
         historical, price_prediction, demand_analysis,
-        harvest_months, harvest_prices, avg_demand
+        harvest_months, harvest_prices, avg_demand,
+        planting_month=planting_month, has_irrigation=has_irrigation
     )
     
     # ── Final Recommendation ─────────────────────────────────────────
     recommendation = _generate_recommendation(
         crop, avg_expected_price, avg_demand, risks,
-        historical, planting_month, harvest_months
+        historical, planting_month, harvest_months,
+        has_irrigation=has_irrigation
     )
 
     # ── Seasonal comparison ──────────────────────────────────────────
@@ -224,7 +249,7 @@ def generate_decision_report(crop_id, planting_month, harvest_months, target_yea
     }
 
 
-def _assess_risks(historical, prediction, demand, harvest_months, harvest_prices, avg_demand):
+def _assess_risks(historical, prediction, demand, harvest_months, harvest_prices, avg_demand, planting_month=None, has_irrigation=False):
     """Identify and assess risks for the planting decision."""
     risks = []
 
@@ -292,6 +317,24 @@ def _assess_risks(historical, prediction, demand, harvest_months, harvest_prices
             'mitigation': 'Consider switching to higher-value crops or reducing planted area.'
         })
 
+    # 6. Rainfall Dependency / Dry Season Risk
+    if planting_month:
+        is_dry_season = 5 <= planting_month <= 10
+        if is_dry_season and not has_irrigation:
+            risks.append({
+                'type': 'Dry Season Rainfall Risk',
+                'severity': 'High',
+                'description': f'Planting in {MONTH_NAMES[planting_month-1]} occurs during the dry season without irrigation. High risk of crop failure or significantly reduced yields.',
+                'mitigation': 'Install an irrigation system or delay planting until the rainy season (November).'
+            })
+        elif has_irrigation:
+            risks.append({
+                'type': 'Irrigation Advantage',
+                'severity': 'Low', # Negative risk / Positive factor
+                'description': 'Farm irrigation system significantly mitigates rainfall dependency and enables dry-season production.',
+                'mitigation': 'Maintain irrigation equipment regularly to ensure consistent water supply.'
+            })
+
     # Overall risk level
     high_risks = sum(1 for r in risks if r['severity'] == 'High')
     medium_risks = sum(1 for r in risks if r['severity'] == 'Medium')
@@ -314,7 +357,7 @@ def _assess_risks(historical, prediction, demand, harvest_months, harvest_prices
     }
 
 
-def _generate_recommendation(crop, avg_price, avg_demand, risks, historical, planting_month, harvest_months):
+def _generate_recommendation(crop, avg_price, avg_demand, risks, historical, planting_month, harvest_months, has_irrigation=False):
     """Generate a final planting recommendation."""
     score = 50  # Start at neutral
 
@@ -355,6 +398,12 @@ def _generate_recommendation(crop, avg_price, avg_demand, risks, historical, pla
     # Risk factors
     score -= risks['high_risk_count'] * 10
     score -= risks['medium_risk_count'] * 5
+    
+    # Irrigation Bonus
+    if has_irrigation:
+        score += 10  # Baseline bonus for stability
+        if 5 <= planting_month <= 10:
+            score += 5  # Extra bonus for enabling dry-season farming
 
     # Seasonal timing
     seasonal = historical.get('seasonal_indices', {})
@@ -374,6 +423,8 @@ def _generate_recommendation(crop, avg_price, avg_demand, risks, historical, pla
         verdict = 'RECOMMENDED'
         confidence = 'High'
         summary = f'Planting {crop["name"]} in {MONTH_NAMES[planting_month-1]} is likely to be profitable. {price_outlook}. {demand_outlook}.'
+        if has_irrigation:
+            summary += ' Irrigation provides a significant competitive advantage.'
         color = 'green'
     elif score >= 45:
         verdict = 'PROCEED WITH CAUTION'
@@ -399,6 +450,7 @@ def _generate_recommendation(crop, avg_price, avg_demand, risks, historical, pla
             f'Price volatility: {historical["summary"]["volatility_level"]}',
             f'Expected demand: {_classify_demand_level(avg_demand)}',
             f'Risk level: {risks["overall_risk_level"]}',
+            f'Irrigation status: {"Enabled" if has_irrigation else "None"}',
         ],
     }
 

@@ -14,7 +14,7 @@ MONTH_NAMES = [
 ]
 
 
-def analyze_demand(crop_id, target_months, target_year=2026, province='National'):
+def analyze_demand(crop_id, target_months, target_year=2026, province='National', start_year=None, end_year=None):
     """
     Analyze market demand trends and forecast demand for harvest months.
     
@@ -26,8 +26,8 @@ def analyze_demand(crop_id, target_months, target_year=2026, province='National'
     Returns:
         dict with demand analysis, trends, and forecasts.
     """
-    demand_records = get_demand_history(crop_id, None, None, province)
-    production_records = get_production_history(crop_id, None, None, province)
+    demand_records = get_demand_history(crop_id, start_year, end_year, province)
+    production_records = get_production_history(crop_id, start_year, end_year, province)
     crop = get_crop_by_id(crop_id)
     
     if not demand_records:

@@ -200,6 +200,11 @@ body {
     min-height: 100vh;
 }
 
+.main-content.no-sidebar {
+    margin-left: 0;
+    padding: 0 40px 40px;
+}
+
 /* ── Page Header ─────────────────────────────────────────────── */
 .page-header {
     display: flex;

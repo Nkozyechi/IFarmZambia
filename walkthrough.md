@@ -24,10 +24,13 @@ IFarmZambia/
 │   ├── base.html             # Sidebar layout
 │   ├── index.html            # Dashboard
 │   ├── analyze.html          # Analysis + charts
+│   ├── marketplace.html      # NEW: Trade/Buy/Sell listings
 │   └── report.html           # Full decision report
 └── static/
     ├── css/style.css          # Dark glassmorphism theme
-    └── js/main.js             # UI interactions
+    ├── js/main.js             # UI interactions
+    ├── manifest.json          # NEW: PWA manifest
+    └── service-worker.js      # NEW: Offline caching worker
 ```
 
 ## Key Features
@@ -35,12 +38,18 @@ IFarmZambia/
 | Feature | Description |
 |---------|-------------|
 | **Dashboard** | Overview of 8 crops with latest prices and trends |
+| **Progressive Web App (PWA)** | Installable base app that fetches cached assets for faster/offline loads |
+| **Crop Information Library** | Detailed agronomic data (planting times, maturity, spacing) for supported crops |
+| **Weather Forecast** | Dynamic 7-day province-specific weather forecast via Open-Meteo API |
+| **Farmer Marketplace** | Peer-to-peer buy/sell listing board for users to advertise upcoming harvests |
 | **Historical Analysis** | 15 years of price data, seasonal patterns, volatility |
+| **Historical Year Targeting** | Select specific custom date ranges (e.g. 2020 - 2025) to isolate recent price volatility for the prediction engines. |
 | **Price Prediction** | 4 methods: SMA, WMA, Linear Regression, Seasonal Decomposition |
 | **Demand Estimation** | Demand forecasting with supply-demand balance |
 | **Decision Report** | Recommendation (Recommended/Caution/Not Recommended) with risk assessment |
-| **Charts** | Chart.js visualizations: price history, seasonal patterns, demand, method comparison |
-| **Print Support** | Report page is print-friendly |
+| **Profitability Calculator** | ROI, Gross Revenue, and Net Profit estimation based on farm size and input costs |
+| **Export/Reporting** | PDF generation of decision reports and CSV export of historical data |
+| **Multi-Language Support** | Instant UI translations for Zambian dialects: English, Bemba, Nyanja, Tonga, and Lozi |
 | **Profit Calculator** | Input custom costs to project margin models on top of predicted crop yield |
 | **Compare Crops** | Compare up to 3 crops head-to-head utilizing a multi-dimensional radar chart |
 | **Region Filters** | Drill-down data filters selecting 1 of Zambia's 10 major provinces |
